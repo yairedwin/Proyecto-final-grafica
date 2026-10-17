@@ -113,8 +113,14 @@ static const char* fShader = "shaders/shader_light.frag";
 #define MURO_PISTA 8
 
 // la pista: elipse de semiejes 60 y 30 con centro en (0, 12, 22); sube y baja con un seno para que se vea mas futurista
-const float PISTA_A = 60.0f, PISTA_B = 30.0f, PISTA_Z = 22.0f, PISTA_ANCHO = 4.0f;
-float alturaPista(float t) { return 12.0f + 2.5f * sin(2.0f * t); }
+const float PISTA_A = 84.0f, PISTA_B = 42.0f, PISTA_Z = 31.0f, PISTA_ANCHO = 5.0f;
+float alturaPista(float t) { return 16.0f + 3.5f * sin(2.0f * t); }
+
+// centro y radio de cada planeta (17-oct: el profe pidio mundos mas grandes; si se vuelven a agrandar, se cambia aqui)
+const glm::vec3 C_FORJA = glm::vec3(-126.0f, 0.0f, -50.0f), C_REACH = glm::vec3(126.0f, 0.0f, -50.0f), C_VENOM = glm::vec3(0.0f, 0.0f, 120.0f);
+const float R_FORJA = 40.0f, R_REACH = 40.0f, R_VENOM = 38.0f;
+const glm::vec3 C_ESTACION = glm::vec3(0.0f, 84.0f, -81.0f);
+const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);	// plataforma de lanzamiento, en el norte de Mundo Forja
 
 
 
@@ -349,13 +355,13 @@ int main()
 	CreateShaders();
 
 	// camara libre: arranca viendo Mundo Forja desde arriba
-	camera = Camera(glm::vec3(-90.0f, 38.0f, 22.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -32.0f, 0.6f, 0.5f);
+	camera = Camera(C_FORJA + glm::vec3(0.0f, 50.0f, 80.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -30.0f, 0.8f, 0.5f);
 	// si existe la variable PF_CAM ("x,y,z,yaw,pitch") la camara libre arranca ahi; sirve para tomar capturas de un punto exacto
 	char textoCam[128]; size_t largoCam = 0;
 	if (getenv_s(&largoCam, textoCam, sizeof(textoCam), "PF_CAM") == 0 && largoCam > 0) {
 		float cx, cy, cz, cyaw, cpitch;
 		if (sscanf_s(textoCam, "%f,%f,%f,%f,%f", &cx, &cy, &cz, &cyaw, &cpitch) == 5)
-			camera = Camera(glm::vec3(cx, cy, cz), glm::vec3(0.0f, 1.0f, 0.0f), cyaw, cpitch, 0.6f, 0.5f);
+			camera = Camera(glm::vec3(cx, cy, cz), glm::vec3(0.0f, 1.0f, 0.0f), cyaw, cpitch, 0.8f, 0.5f);
 	}
 
 	plainTexture = Texture("Textures/plain.png");			plainTexture.LoadTextureA();
@@ -400,20 +406,38 @@ int main()
 	//=========================================================================================
 	// 2. ILUMINACION (las luces fijas se crean aqui, el sol y los apagados se calculan en el ciclo)
 	//=========================================================================================
-	// luminarias L1 a L6, dos por planeta (posiciones de la tabla 1.13.1); alcance ~13 con 1.0, 0.35, 0.44
-	PointLight luminarias[6];
-	// (los planetas crecieron al doble el 17-oct, por eso las posiciones son el doble de las de la tabla)
-	luminarias[0] = PointLight(1.0f, 0.8f, 0.4f, 0.0f, 1.0f, -104.0f, 5.0f, -50.0f, 1.0f, 0.22f, 0.02f);	// L1 forja, amarillo
-	luminarias[1] = PointLight(1.0f, 0.8f, 0.4f, 0.0f, 1.0f, -76.0f, 5.0f, -48.0f, 1.0f, 0.22f, 0.02f);	// L2 forja
-	luminarias[2] = PointLight(0.8f, 0.9f, 1.0f, 0.0f, 1.0f, 76.0f, 5.0f, -52.0f, 1.0f, 0.22f, 0.02f);	// L3 reach, blanco azulado
-	luminarias[3] = PointLight(0.8f, 0.9f, 1.0f, 0.0f, 1.0f, 104.0f, 5.0f, -50.0f, 1.0f, 0.22f, 0.02f);	// L4 reach
-	luminarias[4] = PointLight(0.3f, 1.0f, 0.3f, 0.0f, 1.0f, -14.0f, 5.0f, 76.0f, 1.0f, 0.22f, 0.02f);	// L5 venom, verde
-	luminarias[5] = PointLight(0.3f, 1.0f, 0.3f, 0.0f, 1.0f, 14.0f, 5.0f, 76.0f, 1.0f, 0.22f, 0.02f);	// L6 venom
-	glm::vec3 posLuminaria[6] = { glm::vec3(-104, 0, -50), glm::vec3(-76, 0, -48), glm::vec3(76, 0, -52), glm::vec3(104, 0, -50), glm::vec3(-14, 0, 76), glm::vec3(14, 0, 76) };
+	// luminarias: 4 postes por planeta, solo de noche (L1 a L12; antes eran 6, dos por planeta, como en la tabla 1.13.1)
+	glm::vec3 posLuminaria[12] = {
+		C_FORJA + glm::vec3(-20, 0, -20), C_FORJA + glm::vec3(20, 0, -17), C_FORJA + glm::vec3(-26, 0, 14), C_FORJA + glm::vec3(18, 0, 26),
+		C_REACH + glm::vec3(-20, 0, -22), C_REACH + glm::vec3(20, 0, -20), C_REACH + glm::vec3(-24, 0, 18), C_REACH + glm::vec3(22, 0, 20),
+		C_VENOM + glm::vec3(-20, 0, -14), C_VENOM + glm::vec3(20, 0, -14), C_VENOM + glm::vec3(-24, 0, 16), C_VENOM + glm::vec3(24, 0, 18) };
+	glm::vec3 colorLuminaria[3] = { glm::vec3(1.0f, 0.8f, 0.4f), glm::vec3(0.8f, 0.9f, 1.0f), glm::vec3(0.3f, 1.0f, 0.3f) };	// forja amarillo, reach blanco azulado, venom verde
+	PointLight luminarias[12];
+	for (int i = 0; i < 12; i++) {
+		glm::vec3 c = colorLuminaria[i / 4], q = posLuminaria[i];
+		luminarias[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.0f, q.x, 5.0f, q.z, 1.0f, 0.14f, 0.012f);
+	}
+	// luces de ambiente que siempre estan prendidas: le dan color a cada planeta y a la pista
+	const int N_AMBIENTE = 10;
+	glm::vec3 posAmbiente[N_AMBIENTE] = {
+		C_FORJA + glm::vec3(24, 6, 1),		// horno de la refineria
+		C_FORJA + glm::vec3(-6, 4, 3),		// vendedor Gadgetron
+		C_REACH + glm::vec3(-8, 6, -11),	// hangar
+		C_REACH + glm::vec3(20, 3, 8),		// zona de aterrizaje
+		C_VENOM + glm::vec3(0, 7, 17),		// base de Andross
+		C_VENOM + glm::vec3(-14, 4, -2),	// torres
+		glm::vec3(PISTA_A, 20.0f, PISTA_Z), glm::vec3(-PISTA_A, 20.0f, PISTA_Z), glm::vec3(0.0f, 20.0f, PISTA_Z + PISTA_B), glm::vec3(0.0f, 20.0f, PISTA_Z - PISTA_B) };	// 4 de la pista
+	glm::vec3 colorAmbiente[N_AMBIENTE] = { glm::vec3(1.0f, 0.45f, 0.1f), glm::vec3(0.2f, 0.5f, 1.0f), glm::vec3(0.9f, 0.95f, 1.0f), glm::vec3(0.3f, 1.0f, 0.4f),
+		glm::vec3(1.0f, 0.2f, 0.1f), glm::vec3(0.7f, 0.3f, 1.0f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f) };
+	PointLight lucesAmbiente[N_AMBIENTE];
+	for (int i = 0; i < N_AMBIENTE; i++) {
+		glm::vec3 c = colorAmbiente[i], q = posAmbiente[i];
+		lucesAmbiente[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.6f, q.x, q.y, q.z, 1.0f, 0.09f, 0.006f);
+	}
 
 	// S1 reflector de la plataforma (tecla L) y S2 luces de la estacion (tecla K)
-	SpotLight reflectorS1 = SpotLight(1.0f, 1.0f, 0.8f, 0.0f, 3.0f, -90.0f, 16.0f, -67.0f, 0.0f, -1.0f, 0.35f, 1.0f, 0.02f, 0.001f, 25.0f);
-	SpotLight estacionS2 = SpotLight(0.4f, 0.8f, 1.0f, 0.0f, 3.0f, 0.0f, 54.0f, -46.0f, 0.0f, 0.3f, -1.0f, 1.0f, 0.02f, 0.001f, 20.0f);
+	SpotLight reflectorS1 = SpotLight(1.0f, 1.0f, 0.8f, 0.0f, 3.0f, PLATAFORMA.x, 18.0f, PLATAFORMA.z - 7.0f, 0.0f, -1.0f, 0.35f, 1.0f, 0.02f, 0.001f, 25.0f);
+	SpotLight estacionS2 = SpotLight(0.4f, 0.8f, 1.0f, 0.0f, 3.0f, C_ESTACION.x, C_ESTACION.y - 8.4f, C_ESTACION.z + 16.8f, 0.0f, 0.3f, -1.0f, 1.0f, 0.02f, 0.001f, 20.0f);
 	bool s1Prendido = true, s2Prendido = true;
 	bool teclaL = false, teclaK = false;	// para que el toggle no se repita mientras se deja presionada
 
@@ -433,7 +457,7 @@ int main()
 	float tTransicion = 1.0f;	// 1 = ya llego; cuando cambia de camara se reinicia y se interpola 0.5 s
 	float anguloC4 = 0.0f;
 	// puntos de llegada para la tecla T (centro de cada planeta, en el orden P1 -> P2 -> P3)
-	glm::vec3 llegadas[3] = { glm::vec3(-104.0f, 7.0f, -14.0f), glm::vec3(72.0f, 7.0f, -16.0f), glm::vec3(0.0f, 7.0f, 62.0f) };	// dentro de la zona del skybox de cada planeta
+	glm::vec3 llegadas[3] = { C_FORJA + glm::vec3(-20.0f, 8.0f, 31.0f), C_REACH + glm::vec3(-25.0f, 8.0f, 28.0f), C_VENOM + glm::vec3(0.0f, 8.0f, -33.0f) };	// dentro de la zona del skybox de cada planeta
 	int planetaActual = 0; bool teclaT = false;
 
 
@@ -445,17 +469,17 @@ int main()
 	float w0Nave[3] = { 0.30f, 0.28f, 0.26f };
 	glm::vec3 colorNave[3] = { glm::vec3(0.9f, 0.45f, 0.15f), glm::vec3(0.65f, 0.7f, 0.75f), glm::vec3(0.95f, 0.55f, 0.65f) };	// N1 hoverbike, N2 sabre, N3 catspaw
 	// nave viajera NV (Pelican): avanza sobre una curva Catmull-Rom P1 -> P2 -> P3 -> P1
-	glm::vec3 rutaNV[3] = { glm::vec3(-90.0f, 32.0f, -36.0f), glm::vec3(90.0f, 32.0f, -36.0f), glm::vec3(0.0f, 32.0f, 86.0f) };
+	glm::vec3 rutaNV[3] = { C_FORJA + glm::vec3(0.0f, 42.0f, 0.0f), C_REACH + glm::vec3(0.0f, 42.0f, 0.0f), C_VENOM + glm::vec3(0.0f, 42.0f, 0.0f) };
 	float uNV = 0.5f;	// arranca a medio camino entre Mundo Forja y Reach, a la vista de la camara 3
 	// anillo de la estacion
 	float giroAnillo = 0.0f;
 	// AB1 cohete: 0 en la plataforma, 1 cuenta regresiva, 2 sube, 3 va a la estacion, 4 acoplado
-	int faseCohete = 0; float tCohete = 0.0f; glm::vec3 posCohete = glm::vec3(-90.0f, 0.0f, -60.0f); float brazoServicio = 0.0f; float inclinaCohete = 0.0f;
+	int faseCohete = 0; float tCohete = 0.0f; glm::vec3 posCohete = PLATAFORMA; float brazoServicio = 0.0f; float inclinaCohete = 0.0f;
 	// KF1 Ratchet vuela con el Heli-Pack alrededor de la refineria (tecla H): cuadros clave guardados e interpolacion lineal
 	// cada cuadro es la posicion local en Mundo Forja y el giro en Y; entre cuadro y cuadro hay i_max_steps pasos
 	// (las posiciones son desde el pedestal de la figura MF-11, asi el vuelo empieza y termina ahi)
-	glm::vec3 kfPos[9] = { glm::vec3(0, 0, 0), glm::vec3(4, 5, -4), glm::vec3(10, 10, -14), glm::vec3(16, 14, -24), glm::vec3(26, 13, -18),
-		glm::vec3(26, 14, -6), glm::vec3(16, 10, 2), glm::vec3(6, 5, 2), glm::vec3(0, 0, 0) };
+	glm::vec3 kfPos[9] = { glm::vec3(0, 0, 0), glm::vec3(5.6f, 5, -5.6f), glm::vec3(14, 10, -19.6f), glm::vec3(22.4f, 14, -33.6f), glm::vec3(36.4f, 13, -25.2f),
+		glm::vec3(36.4f, 14, -8.4f), glm::vec3(22.4f, 10, 2.8f), glm::vec3(8.4f, 5, 2.8f), glm::vec3(0, 0, 0) };
 	float kfGiro[9] = { 0.0f, 140.0f, 149.0f, 100.0f, 30.0f, -25.0f, -70.0f, -100.0f, 0.0f };
 	// ajustes de los modelos del juego: hacia donde miran y donde va Clank en la espalda de Ratchet (en unidades del modelo)
 	float giroBaseRatchet = -90.0f, giroVendedor = 0.0f;
@@ -463,6 +487,7 @@ int main()
 	const int i_max_steps = 90;
 	int kfCuadro = 0, i_curr_steps = 0; bool kfReproduciendo = false, teclaH = false;
 	glm::vec3 kfActual = kfPos[0]; float kfGiroActual = kfGiro[0]; float kfAcum = 0.0f;
+	float giroPedestal = 0.0f;	// mientras esta en su pedestal, la figura gira despacio para que se vea completa
 	// AB2 torreta: 0 quieta, 1 gira hacia la camara, 2 dispara
 	int faseTorreta = 0; float giroTorre = 0.0f, angCanon = 0.0f, retroceso = 0.0f, giroObjetivo = 0.0f; glm::vec3 posBala; glm::vec3 dirBala; float tBala = 0.0f;
 	bool teclaR = false, teclaG = false;
@@ -492,12 +517,13 @@ int main()
 		if (teclas[GLFW_KEY_R] && !teclaR && faseCohete == 0) { faseCohete = 1; tCohete = 0.0f; }	teclaR = teclas[GLFW_KEY_R];
 		if (teclas[GLFW_KEY_G] && !teclaG && faseTorreta == 0) {
 			faseTorreta = 1;
-			glm::vec3 t = glm::vec3(-98.0f, 0.0f, -56.0f);	// torreta de la izquierda de la plataforma
+			glm::vec3 t = C_FORJA + glm::vec3(-11.2f, 0.0f, -28.0f);	// torreta de la izquierda de la plataforma
 			giroObjetivo = glm::degrees(atan2(camPos.x - t.x, camPos.z - t.z));
 		}
 		teclaG = teclas[GLFW_KEY_G];
 		if (teclas[GLFW_KEY_H] && !teclaH) {	// H arranca o detiene el vuelo de KF1
 			kfReproduciendo = !kfReproduciendo;
+			giroPedestal = 0.0f;	// despega mirando al frente
 			if (kfReproduciendo && kfCuadro >= 8) { kfCuadro = 0; i_curr_steps = 0; }
 		}
 		teclaH = teclas[GLFW_KEY_H];
@@ -510,10 +536,10 @@ int main()
 		if (teclas[GLFW_KEY_T] && !teclaT && modoCamara == 1) {
 			// T: viaja al siguiente planeta (por ahora mueve la camara libre; despues movera al avatar)
 			planetaActual = (planetaActual + 1) % 3;
-			glm::vec3 centro = planetaActual == 0 ? glm::vec3(-90, 0, -36) : planetaActual == 1 ? glm::vec3(90, 0, -36) : glm::vec3(0, 0, 86);
+			glm::vec3 centro = planetaActual == 0 ? C_FORJA : planetaActual == 1 ? C_REACH : C_VENOM;
 			glm::vec3 llega = llegadas[planetaActual];
 			float yaw = glm::degrees(atan2(centro.z - llega.z, centro.x - llega.x));
-			camera = Camera(llega, glm::vec3(0.0f, 1.0f, 0.0f), yaw, -15.0f, 0.6f, 0.5f);
+			camera = Camera(llega, glm::vec3(0.0f, 1.0f, 0.0f), yaw, -15.0f, 0.8f, 0.5f);
 		}
 		teclaT = teclas[GLFW_KEY_T];
 
@@ -533,7 +559,7 @@ int main()
 		bool navesEnMovimiento = true;
 		if (navesEnMovimiento) for (int i = 0; i < 3; i++) angNave[i] += (w0Nave[i] + 0.06f * sin(now + i)) * dt;
 		// NV: avanza un tramo de la ruta cada 16 s (la ruta es el doble de larga que antes)
-		if (navesEnMovimiento) { uNV += dt / 16.0f; if (uNV >= 3.0f) uNV -= 3.0f; }
+		if (navesEnMovimiento) { uNV += dt / 20.0f; if (uNV >= 3.0f) uNV -= 3.0f; }
 		giroAnillo += 10.0f * dt;
 		// KF1: avanza un paso por cuadro (60 cuadros por segundo) e interpola entre el cuadro actual y el siguiente
 		if (kfReproduciendo) {
@@ -552,17 +578,17 @@ int main()
 		if (faseCohete == 1) { tCohete += dt; brazoServicio = glm::min(tCohete / 3.0f, 1.0f) * 70.0f; if (tCohete >= 3.0f) { faseCohete = 2; tCohete = 0.0f; } }
 		else if (faseCohete == 2) {	// sube con aceleracion constante: y = 1/2 a t^2
 			tCohete += dt; posCohete.y = 0.5f * 2.5f * tCohete * tCohete;
-			if (posCohete.y >= 45.0f) { posCohete.y = 45.0f; faseCohete = 3; tCohete = 0.0f; }
+			if (posCohete.y >= 60.0f) { posCohete.y = 60.0f; faseCohete = 3; tCohete = 0.0f; }
 		}
 		else if (faseCohete == 3) {	// se inclina y va hacia la bahia de la estacion
-			tCohete += dt; float u = glm::min(tCohete / 6.0f, 1.0f);
-			posCohete = glm::mix(glm::vec3(-90.0f, 45.0f, -60.0f), glm::vec3(-6.4f, 56.0f, -51.6f), u);
+			tCohete += dt; float u = glm::min(tCohete / 8.0f, 1.0f);
+			posCohete = glm::mix(PLATAFORMA + glm::vec3(0.0f, 60.0f, 0.0f), C_ESTACION + glm::vec3(-8.8f, -5.5f, 8.8f), u);	// a la bahia de la estacion
 			inclinaCohete = -60.0f * sin(u * PI);
 			if (u >= 1.0f) { faseCohete = 4; tCohete = 0.0f; }
 		}
 		else if (faseCohete == 4) {	// acoplado: desaparece y a los 4 s regresa a la plataforma
 			tCohete += dt;
-			if (tCohete > 4.0f) { faseCohete = 0; posCohete = glm::vec3(-90.0f, 0.0f, -60.0f); brazoServicio = 0.0f; inclinaCohete = 0.0f; }
+			if (tCohete > 4.0f) { faseCohete = 0; posCohete = PLATAFORMA; brazoServicio = 0.0f; inclinaCohete = 0.0f; }
 		}
 		// AB2 torreta
 		if (faseTorreta == 1) {
@@ -571,7 +597,7 @@ int main()
 			angCanon = glm::min(angCanon + 20.0f * dt, 15.0f);
 			if (fabs(dif) < 1.0f && angCanon >= 15.0f) {
 				faseTorreta = 2; tBala = 0.0f; retroceso = 0.3f;
-				posBala = glm::vec3(-98.0f, 2.2f, -56.0f);
+				posBala = C_FORJA + glm::vec3(-11.2f, 2.2f, -28.0f);
 				dirBala = glm::vec3(sin(glm::radians(giroTorre)), -sin(glm::radians(angCanon)) * 0.3f, cos(glm::radians(giroTorre)));
 			}
 		}
@@ -586,7 +612,7 @@ int main()
 
 		// ---------------- posicion de las naves para las camaras ----------------
 		glm::vec3 posN1 = glm::vec3(PISTA_A * cos(angNave[0]), alturaPista(angNave[0]) + 0.9f, PISTA_Z + PISTA_B * sin(angNave[0]));
-		glm::vec3 tanN1 = glm::normalize(glm::vec3(-PISTA_A * sin(angNave[0]), 5.0f * cos(2.0f * angNave[0]), PISTA_B * cos(angNave[0])));	// derivada de la curva (tambien en y porque la pista sube y baja)
+		glm::vec3 tanN1 = glm::normalize(glm::vec3(-PISTA_A * sin(angNave[0]), 7.0f * cos(2.0f * angNave[0]), PISTA_B * cos(angNave[0])));	// derivada de la curva (tambien en y porque la pista sube y baja)
 		int tramo = (int)uNV; float u = uNV - tramo;
 		// Catmull-Rom con los 3 puntos del circuito: p0 anterior, p1 y p2 del tramo, p3 siguiente (con 3 puntos p0 y p3 son el mismo)
 		glm::vec3 p0 = rutaNV[(tramo + 2) % 3], p1 = rutaNV[tramo], p2 = rutaNV[(tramo + 1) % 3], p3 = rutaNV[(tramo + 2) % 3];
@@ -597,11 +623,11 @@ int main()
 		glm::vec3 destPos, destMira;
 		if (modoCamara == 1) { destPos = camera.getCameraPosition(); destMira = destPos + camera.getCameraDirection(); }
 		else if (modoCamara == 2) { destPos = posN1 - 7.0f * tanN1 + glm::vec3(0.0f, 2.5f, 0.0f); destMira = posN1 + tanN1; }
-		else if (modoCamara == 3) { destPos = posNV - 8.0f * tanNV + glm::vec3(0.0f, 2.5f, 0.0f); destMira = posNV + tanNV; }
+		else if (modoCamara == 3) { destPos = posNV - 10.0f * tanNV + glm::vec3(0.0f, 2.5f, 0.0f); destMira = posNV + tanNV; }
 		else {	// C4: orbita el punto entre la plataforma y la estacion
 			anguloC4 += 0.06f * dt;
-			glm::vec3 centro = glm::vec3(-45.0f, 28.0f, -58.0f);
-			destPos = centro + glm::vec3(70.0f * cos(anguloC4), 14.0f, 70.0f * sin(anguloC4)); destMira = centro;
+			glm::vec3 centro = glm::vec3(-63.0f, 39.0f, -81.0f);
+			destPos = centro + glm::vec3(100.0f * cos(anguloC4), 20.0f, 100.0f * sin(anguloC4)); destMira = centro;
 		}
 		if (tTransicion < 1.0f) {	// cambio suave de camara en 0.5 s
 			tTransicion = glm::min(tTransicion + dt / 0.5f, 1.0f);
@@ -626,20 +652,28 @@ int main()
 		bool esDeNoche = s < 0.0f;
 
 		// luminarias: todas a la vez segun el ciclo
+		// el shader solo recibe 8 luces puntuales, asi que de todas las candidatas mando las 8 mas cercanas a la camara
 		unsigned int pointLightCount = 0;
-		if (esDeNoche) for (int i = 0; i < 6; i++) pointLights[pointLightCount++] = luminarias[i];
+		PointLight candidatas[12 + N_AMBIENTE]; float distancia[12 + N_AMBIENTE]; int nCandidatas = 0;
+		for (int i = 0; i < N_AMBIENTE; i++) { candidatas[nCandidatas] = lucesAmbiente[i]; distancia[nCandidatas++] = glm::distance(camPos, posAmbiente[i]); }
+		if (esDeNoche) for (int i = 0; i < 12; i++) { candidatas[nCandidatas] = luminarias[i]; distancia[nCandidatas++] = glm::distance(camPos, posLuminaria[i]); }
+		for (int k = 0; k < nCandidatas && pointLightCount < MAX_POINT_LIGHTS; k++) {	// seleccion: cada vuelta toma la mas cercana que falte
+			int mejor = -1;
+			for (int i = 0; i < nCandidatas; i++) if (distancia[i] >= 0.0f && (mejor < 0 || distancia[i] < distancia[mejor])) mejor = i;
+			pointLights[pointLightCount++] = candidatas[mejor]; distancia[mejor] = -1.0f;
+		}
 		// spotlights: solo se mandan los que estan prendidos
 		unsigned int spotLightCount = 0;
-		if (s1Prendido) { reflectorS1.SetPos(glm::vec3(-90.0f, 16.0f, -67.0f)); spotLights[spotLightCount++] = reflectorS1; }
+		if (s1Prendido) { reflectorS1.SetPos(glm::vec3(PLATAFORMA.x, 18.0f, PLATAFORMA.z - 7.0f)); spotLights[spotLightCount++] = reflectorS1; }
 		if (s2Prendido) spotLights[spotLightCount++] = estacionS2;
 
 		// ---------------- skybox segun la zona ----------------
 		Skybox* sky = &skyEspacio;
 		if (modoCamara == 1) {
 			glm::vec2 c = glm::vec2(camPos.x, camPos.z);
-			if (glm::distance(c, glm::vec2(-90.0f, -36.0f)) < 34.0f && camPos.y < 30.0f) sky = &skyForja;
-			else if (glm::distance(c, glm::vec2(90.0f, -36.0f)) < 34.0f && camPos.y < 30.0f) sky = &skyReach;
-			else if (glm::distance(c, glm::vec2(0.0f, 86.0f)) < 32.0f && camPos.y < 30.0f) sky = &skyVenom;
+			if (glm::distance(c, glm::vec2(C_FORJA.x, C_FORJA.z)) < R_FORJA && camPos.y < 30.0f) sky = &skyForja;
+			else if (glm::distance(c, glm::vec2(C_REACH.x, C_REACH.z)) < R_REACH && camPos.y < 30.0f) sky = &skyReach;
+			else if (glm::distance(c, glm::vec2(C_VENOM.x, C_VENOM.z)) < R_VENOM && camPos.y < 30.0f) sky = &skyVenom;
 		}
 
 		// si se maximiza la ventana el dibujo se quedaba en una esquina: ajusto el viewport y la proyeccion al tamaño real
@@ -679,9 +713,8 @@ int main()
 		// 4. ESCENARIO COMUN
 		//=====================================================================================
 		// ---- planetas: disco caminable en y = 0 y hemisferio de roca abajo ----
-		// el profe pidio mundos mas grandes: radio y separacion al doble (17-oct)
-		glm::vec3 centroPlaneta[3] = { glm::vec3(-90.0f, 0.0f, -36.0f), glm::vec3(90.0f, 0.0f, -36.0f), glm::vec3(0.0f, 0.0f, 86.0f) };
-		float radioPlaneta[3] = { 28.0f, 28.0f, 26.0f };
+		glm::vec3 centroPlaneta[3] = { C_FORJA, C_REACH, C_VENOM };
+		float radioPlaneta[3] = { R_FORJA, R_REACH, R_VENOM };
 		Texture* texPlaneta[3] = { &forjaTexture, &reachTexture, &venomTexture };
 		for (int i = 0; i < 3; i++) {
 			model = glm::mat4(1.0);
@@ -718,9 +751,9 @@ int main()
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 		neonTexture.UseTexture();
 		meshListModel[MURO_PISTA]->RenderMeshModel();
-		// soportes: 16 columnas delgadas debajo de la pista con un emisor de energia en la punta
-		for (int i = 0; i < 16; i++) {
-			float t = i * 2.0f * PI / 16.0f;
+		// soportes: 20 columnas delgadas debajo de la pista con un emisor de energia en la punta
+		for (int i = 0; i < 20; i++) {
+			float t = i * 2.0f * PI / 20.0f;
 			glm::vec3 c = glm::vec3(PISTA_A * cos(t), alturaPista(t), PISTA_Z + PISTA_B * sin(t));
 			model = glm::mat4(1.0);
 			model = glm::translate(model, c - glm::vec3(0.0f, 7.0f, 0.0f));
@@ -750,8 +783,8 @@ int main()
 				model = glm::translate(model, c);
 				model = glm::rotate(model, glm::radians(giro), glm::vec3(0.0f, 1.0f, 0.0f));
 				model = glm::rotate(model, glm::radians(fi), glm::vec3(0.0f, 0.0f, 1.0f));
-				model = glm::translate(model, glm::vec3(0.0f, 6.5f, 0.0f));
-				model = glm::scale(model, glm::vec3(2.1f, 0.45f, 0.7f));
+				model = glm::translate(model, glm::vec3(0.0f, 8.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(2.6f, 0.5f, 0.8f));
 				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 				color = k % 2 ? glm::vec3(0.3f, 0.32f, 0.38f) : (i % 2 ? glm::vec3(0.4f, 2.0f, 2.4f) : glm::vec3(2.2f, 0.45f, 1.6f));
 				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
@@ -762,10 +795,10 @@ int main()
 		}
 		// ---- AC2 naves N1, N2, N3 en la pista ----
 		for (int i = 0; i < 3; i++) {
-			float t = angNave[i], carril = (i - 1) * 2.4f;	// cada una en su carril
+			float t = angNave[i], carril = (i - 1) * 3.0f;	// cada una en su carril
 			glm::vec3 p = glm::vec3((PISTA_A + carril) * cos(t), alturaPista(t) + 0.9f + 0.15f * sin(6.0f * now + i), PISTA_Z + (PISTA_B + carril) * sin(t));	// flotan un poco
 			float giro = glm::degrees(atan2(-PISTA_A * sin(t), PISTA_B * cos(t)));	// orientada con la tangente
-			float pendiente = glm::degrees(atan2(5.0f * cos(2.0f * t), glm::length(glm::vec2(PISTA_A * sin(t), PISTA_B * cos(t)))));	// sube y baja con la pista
+			float pendiente = glm::degrees(atan2(7.0f * cos(2.0f * t), glm::length(glm::vec2(PISTA_A * sin(t), PISTA_B * cos(t)))));	// sube y baja con la pista
 			model = glm::mat4(1.0);
 			model = glm::translate(model, p);
 			model = glm::rotate(model, glm::radians(giro), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -783,8 +816,8 @@ int main()
 		}
 		// ---- E1 estacion espacial (jerarquia: nucleo -> anillo -> brazos -> bahias) ----
 		model = glm::mat4(1.0);
-		model = glm::translate(model, glm::vec3(0.0f, 60.0f, -58.0f));
-		model = glm::scale(model, glm::vec3(1.6f, 1.6f, 1.6f));	// crecio junto con los planetas
+		model = glm::translate(model, C_ESTACION);
+		model = glm::scale(model, glm::vec3(2.2f, 2.2f, 2.2f));	// crecio junto con los planetas
 		modelaux = model;
 		model = glm::scale(model, glm::vec3(2.2f, 2.2f, 2.2f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -826,8 +859,8 @@ int main()
 
 		// ---- E3 plataforma de lanzamiento y cohete (AB1) ----
 		model = glm::mat4(1.0);
-		model = glm::translate(model, glm::vec3(-90.0f, 0.03f, -60.0f));
-		model = glm::scale(model, glm::vec3(5.0f, 1.0f, 5.0f));
+		model = glm::translate(model, PLATAFORMA + glm::vec3(0.0f, 0.03f, 0.0f));
+		model = glm::scale(model, glm::vec3(6.0f, 1.0f, 6.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		color = glm::vec3(0.75f, 0.72f, 0.66f);
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
@@ -836,7 +869,7 @@ int main()
 		meshListModel[DISCO]->RenderMeshModel();
 		// torre de servicio con su brazo
 		model = glm::mat4(1.0);
-		model = glm::translate(model, glm::vec3(-85.5f, 0.0f, -60.0f));
+		model = glm::translate(model, PLATAFORMA + glm::vec3(5.0f, 0.0f, 0.0f));
 		modelaux = model;
 		model = glm::translate(model, glm::vec3(0.0f, 6.5f, 0.0f));
 		model = glm::scale(model, glm::vec3(1.0f, 13.0f, 1.0f));
@@ -848,8 +881,8 @@ int main()
 		model = modelaux;
 		model = glm::translate(model, glm::vec3(0.0f, 8.5f, 0.0f));
 		model = glm::rotate(model, glm::radians(brazoServicio), glm::vec3(0.0f, 1.0f, 0.0f));	// se retira antes del despegue
-		model = glm::translate(model, glm::vec3(-1.7f, 0.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(3.4f, 0.4f, 0.4f));
+		model = glm::translate(model, glm::vec3(-1.9f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(3.8f, 0.4f, 0.4f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		meshListModel[CUBO]->RenderMeshModel();
 		// cohete: cuerpo -> nariz, 3 propulsores y 3 aletas
@@ -894,11 +927,11 @@ int main()
 		}
 
 		// ---- CE1 a CE5 cuerpos celestes ----
-		glm::vec3 posCuerpo[5] = { glm::vec3(-46, 30, -8), glm::vec3(46, 34, -8), glm::vec3(-50, 24, 50), glm::vec3(50, 30, 54), glm::vec3(0, 42, -24) };
-		float radioCuerpo[5] = { 5.0f, 3.6f, 2.6f, 4.2f, 3.0f };
+		glm::vec3 posCuerpo[5] = { glm::vec3(-64.4f, 30, -11.2f), glm::vec3(64.4f, 34, -11.2f), glm::vec3(-70, 24, 70), glm::vec3(70, 30, 75.6f), glm::vec3(0, 42, -33.6f) };
+		float radioCuerpo[5] = { 6.0f, 4.4f, 3.2f, 5.0f, 3.6f };
 		for (int i = 0; i < 5; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, posCuerpo[i]);
+			model = glm::translate(model, posCuerpo[i] + glm::vec3(0.0f, 8.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(now * (8.0f + 3.0f * i)), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::scale(model, glm::vec3(radioCuerpo[i], radioCuerpo[i] * (i % 2 ? 0.8f : 1.0f), radioCuerpo[i]));	// los asteroides achatados
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -909,10 +942,10 @@ int main()
 			meshListModel[ESFERA]->RenderMeshModel();
 		}
 		// satelites (antenas de Kenney) cerca de la estacion, giran despacio
-		glm::vec3 posSatelite[3] = { glm::vec3(22, 52, -44), glm::vec3(-26, 68, -70), glm::vec3(36, 58, -76) };
+		glm::vec3 posSatelite[3] = { glm::vec3(30.8f, 52, -61.6f), glm::vec3(-36.4f, 68, -98), glm::vec3(50.4f, 58, -106.4f) };
 		for (int i = 0; i < 3; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, posSatelite[i]);
+			model = glm::translate(model, posSatelite[i] + glm::vec3(0.0f, 24.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(now * (12.0f + 5.0f * i)), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::scale(model, glm::vec3(4.5f, 4.5f, 4.5f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -922,10 +955,10 @@ int main()
 			antenaSatelite.RenderModel();
 		}
 		// asteroides (meteoros de Kenney) entre los planetas
-		glm::vec3 posMeteoro[6] = { glm::vec3(-20, 36, -12), glm::vec3(28, 26, 4), glm::vec3(12, 46, -36), glm::vec3(-8, 30, 60), glm::vec3(-60, 40, 20), glm::vec3(62, 44, 24) };
+		glm::vec3 posMeteoro[6] = { glm::vec3(-28, 36, -16.8f), glm::vec3(39.2f, 26, 5.6f), glm::vec3(16.8f, 46, -50.4f), glm::vec3(-11.2f, 30, 84), glm::vec3(-84, 40, 28), glm::vec3(86.8f, 44, 33.6f) };
 		for (int i = 0; i < 6; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, posMeteoro[i] + glm::vec3(0.0f, 1.5f * sin(0.5f * now + i), 0.0f));	// flotan despacio
+			model = glm::translate(model, posMeteoro[i] + glm::vec3(0.0f, 10.0f + 1.5f * sin(0.5f * now + i), 0.0f));	// flotan despacio
 			model = glm::rotate(model, glm::radians(now * (9.0f + 4.0f * i)), glm::vec3(0.3f, 1.0f, 0.2f));
 			model = glm::scale(model, glm::vec3(4.5f + i * 0.6f, 4.5f + i * 0.6f, 4.5f + i * 0.6f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -957,12 +990,12 @@ int main()
 
 		//=====================================================================================
 		// 5. P1 MUNDO FORJA (Ratchet & Clank) · 419049898
-		// centro (-90, 0, -36), radio 28; coordenadas locales: norte = plataforma, este = refineria,
+		// centro C_FORJA, radio R_FORJA; coordenadas locales: norte = plataforma, este = refineria,
 		// oeste = corral de Protopets, centro = vendedor y cajas, sur = garage, figura y plataformas flotantes
 		//=====================================================================================
-		glm::vec3 cMF = glm::vec3(-90.0f, 0.0f, -36.0f);
+		glm::vec3 cMF = C_FORJA;
 		// MF-01 torres de refineria x3: chimenea de Kenney (Space Kit, CC0) con un generador al lado
-		glm::vec3 refineria[3] = { glm::vec3(16, 0, -6), glm::vec3(21, 0, 1), glm::vec3(15, 0, 8) };
+		glm::vec3 refineria[3] = { glm::vec3(22.4f, 0, -8.4f), glm::vec3(29.4f, 0, 1.4f), glm::vec3(21, 0, 11.2f) };
 		for (int i = 0; i < 3; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + refineria[i]);
@@ -997,7 +1030,7 @@ int main()
 			metalTexture.UseTexture();
 			meshListModel[CILINDRO]->RenderMeshModel();
 		}
-		glm::vec3 tanque[2] = { glm::vec3(25, 0, -12), glm::vec3(25, 0, 12) };
+		glm::vec3 tanque[2] = { glm::vec3(35, 0, -16.8f), glm::vec3(35, 0, 16.8f) };
 		for (int i = 0; i < 2; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + tanque[i]);
@@ -1022,9 +1055,9 @@ int main()
 		}
 
 		// MF-03 grind rails x2: curvas cuadraticas (A -> control C -> B) hechas con tramos de cilindro
-		glm::vec3 rielA[2] = { glm::vec3(-24, 1.6f, -8), glm::vec3(4, 1.6f, 22) };
-		glm::vec3 rielC[2] = { glm::vec3(-18, 1.6f, -26), glm::vec3(18, 1.6f, 28) };
-		glm::vec3 rielB[2] = { glm::vec3(-6, 1.6f, -16), glm::vec3(24, 1.6f, 13) };
+		glm::vec3 rielA[2] = { glm::vec3(-33.6f, 1.6f, -11.2f), glm::vec3(5.6f, 1.6f, 30.8f) };
+		glm::vec3 rielC[2] = { glm::vec3(-25.2f, 1.6f, -36.4f), glm::vec3(25.2f, 1.6f, 39.2f) };
+		glm::vec3 rielB[2] = { glm::vec3(-8.4f, 1.6f, -22.4f), glm::vec3(33.6f, 1.6f, 18.2f) };
 		for (int r = 0; r < 2; r++) {
 			for (int k = 0; k < 30; k++) {
 				float t1 = k / 30.0f, t2 = (k + 1) / 30.0f;
@@ -1060,7 +1093,7 @@ int main()
 				float t = 0.15f + 0.23f * k;
 				tornillo[r * 4 + k] = (1 - t) * (1 - t) * rielA[r] + 2 * (1 - t) * t * rielC[r] + t * t * rielB[r] + glm::vec3(0.0f, -0.4f, 0.0f);
 			}
-		tornillo[8] = glm::vec3(2, 1.2f, -4); tornillo[9] = glm::vec3(5, 1.2f, -1); tornillo[10] = glm::vec3(-1, 1.2f, -7); tornillo[11] = glm::vec3(8, 1.2f, -5);
+		tornillo[8] = glm::vec3(2.8f, 1.2f, -5.6f); tornillo[9] = glm::vec3(7, 1.2f, -1.4f); tornillo[10] = glm::vec3(-1.4f, 1.2f, -9.8f); tornillo[11] = glm::vec3(11.2f, 1.2f, -7);
 		for (int i = 0; i < 12; i++) {
 			float y = tornillo[i].y + 0.25f * sin(2.0f * PI * now / 2.0f + i * 0.7f);
 			model = glm::mat4(1.0);
@@ -1075,7 +1108,7 @@ int main()
 			meshListModel[TORNILLO]->RenderMeshModel();
 		}
 		// MF-05 cajas x8 junto al vendedor (de tornillos naranjas y de nanotech azules)
-		glm::vec3 caja[8] = { glm::vec3(-9, 0, 0), glm::vec3(-9, 0, 2), glm::vec3(-9, 1.1f, 1), glm::vec3(-10.5f, 0, 4), glm::vec3(-7.5f, 0, 5),
+		glm::vec3 caja[8] = { glm::vec3(-12.6f, 0, 0), glm::vec3(-12.6f, 0, 2.8f), glm::vec3(-12.6f, 1.1f, 1.4f), glm::vec3(-14.7f, 0, 5.6f), glm::vec3(-10.5f, 0, 7),
 			glm::vec3(1, 0, 3), glm::vec3(2.3f, 0, 4.6f), glm::vec3(1.4f, 1.1f, 3.6f) };
 		for (int i = 0; i < 8; i++) {
 			model = glm::mat4(1.0);
@@ -1091,7 +1124,7 @@ int main()
 		}
 		// MF-06 vendedor Gadgetron (modelo del juego, mide 66 de alto, lo dejo en ~6)
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-4.0f, 0.0f, 2.0f));
+		model = glm::translate(model, cMF + glm::vec3(-5.6f, 0.0f, 2.8f));
 		model = glm::rotate(model, glm::radians(giroVendedor), glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.09f, 0.09f, 0.09f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -1101,7 +1134,7 @@ int main()
 		vendedorGadgetron.RenderModel();
 
 		// MF-07 torretas x2 junto a la plataforma (jerarquia: base -> torre en Y -> cañon en X); la de la izquierda hace AB2
-		glm::vec3 torreta[2] = { cMF + glm::vec3(-8.0f, 0.0f, -20.0f), cMF + glm::vec3(8.0f, 0.0f, -20.0f) };
+		glm::vec3 torreta[2] = { cMF + glm::vec3(-11.2f, 0.0f, -28.0f), cMF + glm::vec3(11.2f, 0.0f, -28.0f) };
 		for (int i = 0; i < 2; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, torreta[i]);
@@ -1143,7 +1176,7 @@ int main()
 
 		// MF-08 plataformas flotantes x3 afuera de la orilla sur: suben y bajan con un seno y giran despacio
 		for (int i = 0; i < 3; i++) {
-			glm::vec3 p = cMF + glm::vec3(-10.0f + 10.0f * i, 2.5f + 0.9f * sin(0.8f * now + i * 2.0f), 33.0f + (i == 1 ? 4.0f : 0.0f));
+			glm::vec3 p = cMF + glm::vec3(-14.0f + 14.0f * i, 2.5f + 0.9f * sin(0.8f * now + i * 2.0f), 46.0f + (i == 1 ? 5.0f : 0.0f));
 			model = glm::mat4(1.0);
 			model = glm::translate(model, p);
 			model = glm::rotate(model, glm::radians(10.0f * now + i * 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -1176,7 +1209,7 @@ int main()
 		}
 
 		// MF-09 Blargs x4 trabajando en la refineria (jerarquia: cadera -> torso -> cabeza con pico; brazos que martillan; piernas)
-		glm::vec3 blarg[4] = { glm::vec3(10, 0, -10), glm::vec3(11, 0, 3), glm::vec3(20, 0, 13), glm::vec3(24, 0, -4) };
+		glm::vec3 blarg[4] = { glm::vec3(14, 0, -14), glm::vec3(15.4f, 0, 4.2f), glm::vec3(28, 0, 18.2f), glm::vec3(33.6f, 0, -5.6f) };
 		float giroBlarg[4] = { 60.0f, 90.0f, 160.0f, -90.0f };
 		for (int i = 0; i < 4; i++) {
 			float golpe = 45.0f * sin(5.0f * now + i * 1.3f);	// el brazo derecho sube y baja con la llave
@@ -1252,7 +1285,7 @@ int main()
 		}
 
 		// MF-10 Protopets x3 en el oeste: dos normales y uno mutado (mas grande); brincan con |sin| y se aplastan al caer
-		glm::vec3 protopet[3] = { glm::vec3(-20, 0, -1), glm::vec3(-23, 0, 4), glm::vec3(-18, 0, 7) };
+		glm::vec3 protopet[3] = { glm::vec3(-28, 0, -1.4f), glm::vec3(-32.2f, 0, 5.6f), glm::vec3(-25.2f, 0, 9.8f) };
 		for (int i = 0; i < 3; i++) {
 			bool mutado = i == 2;
 			float tam = mutado ? 1.8f : 0.8f;
@@ -1304,10 +1337,10 @@ int main()
 				}
 		}
 		// cerca del corral de los Protopets: postes en circulo
-		for (int k = 0; k < 18; k++) {
-			float a = k * 2.0f * PI / 18.0f;
+		for (int k = 0; k < 22; k++) {
+			float a = k * 2.0f * PI / 22.0f;
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cMF + glm::vec3(-20.5f + 6.5f * cos(a), 0.0f, 3.0f + 6.5f * sin(a)));
+			model = glm::translate(model, cMF + glm::vec3(-28.7f + 8.5f * cos(a), 0.0f, 4.2f + 8.5f * sin(a)));
 			model = glm::scale(model, glm::vec3(0.2f, 1.2f, 0.2f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			color = glm::vec3(0.5f, 0.45f, 0.35f);
@@ -1319,7 +1352,7 @@ int main()
 
 		// MF-12 garage de Ratchet: caja con techo de medio cilindro, porton abierto y franjas naranjas
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-12.0f, 0.0f, 17.0f));
+		model = glm::translate(model, cMF + glm::vec3(-16.8f, 0.0f, 23.8f));
 		modelaux = model;
 		model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(8.0f, 4.0f, 7.0f));
@@ -1356,7 +1389,7 @@ int main()
 		}
 
 		// MF-11 figura de Ratchet y Clank en su pedestal; con H despega y vuela con el Heli-Pack (KF1) y regresa al pedestal
-		glm::vec3 pedestal = glm::vec3(2.0f, 0.0f, 14.0f);
+		glm::vec3 pedestal = glm::vec3(2.8f, 0.0f, 19.6f);
 		model = glm::mat4(1.0);
 		model = glm::translate(model, cMF + pedestal);
 		model = glm::scale(model, glm::vec3(2.6f, 0.6f, 2.6f));
@@ -1369,7 +1402,8 @@ int main()
 		bool volando = kfReproduciendo || (kfCuadro > 0 && kfCuadro < 8);
 		model = glm::mat4(1.0);
 		model = glm::translate(model, cMF + pedestal + kfActual + glm::vec3(0.0f, 0.6f, 0.0f));
-		model = glm::rotate(model, glm::radians(kfGiroActual + giroBaseRatchet), glm::vec3(0.0f, 1.0f, 0.0f));
+		if (!volando) giroPedestal += 25.0f * dt;
+		model = glm::rotate(model, glm::radians(kfGiroActual + giroBaseRatchet + giroPedestal), glm::vec3(0.0f, 1.0f, 0.0f));
 		if (volando) model = glm::rotate(model, glm::radians(8.0f * sin(3.0f * now)), glm::vec3(1.0f, 0.0f, 0.0f));	// se balancea en el aire
 		model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
 		modelaux = model;
@@ -1425,10 +1459,10 @@ int main()
 		// centro (45, 0, -18); coordenadas locales de la lamina 3. Por ahora son bloques en su lugar,
 		// se cambian por los modelos: HR-01 a HR-14, AB3 Pelican (P), AC3 antena, AC4 escudos, AC5 plataformas MAC
 		//=====================================================================================
-		glm::vec3 cHR = glm::vec3(90.0f, 0.0f, -36.0f);	// (los planetas crecieron al doble: las posiciones locales van al doble)
+		glm::vec3 cHR = C_REACH;	// (los planetas crecieron: las posiciones locales van mas separadas)
 		// HR-01 base UNSC: hangar de Kenney (Space Kit, CC0) mientras llega el modelo de Blender
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cHR + glm::vec3(-6.0f, 0.0f, -8.0f));
+		model = glm::translate(model, cHR + glm::vec3(-8.4f, 0.0f, -11.2f));
 		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));	// el lado largo del hangar va a lo ancho
 		model = glm::scale(model, glm::vec3(3.6f, 3.6f, 3.6f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -1438,7 +1472,7 @@ int main()
 		hangarReach.RenderModel();
 		plainTexture.UseTexture();
 		// HR-02 barricadas x4
-		glm::vec2 barricada[4] = { glm::vec2(-16, -6), glm::vec2(-16, 6), glm::vec2(0, 6), glm::vec2(6, -4) };
+		glm::vec2 barricada[4] = { glm::vec2(-22.4f, -8.4f), glm::vec2(-22.4f, 8.4f), glm::vec2(0, 8.4f), glm::vec2(8.4f, -5.6f) };
 		for (int i = 0; i < 4; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cHR + glm::vec3(barricada[i].x, 0.4f, barricada[i].y));
@@ -1447,7 +1481,7 @@ int main()
 			meshListModel[CUBO]->RenderMeshModel();
 		}
 		// HR-04a pinos x6
-		glm::vec2 pino[6] = { glm::vec2(-18, -18), glm::vec2(-10, -22), glm::vec2(10, -20), glm::vec2(20, -14), glm::vec2(-20, 14), glm::vec2(14, 20) };
+		glm::vec2 pino[6] = { glm::vec2(-25.2f, -25.2f), glm::vec2(-14, -30.8f), glm::vec2(14, -28), glm::vec2(28, -19.6f), glm::vec2(-28, 19.6f), glm::vec2(19.6f, 28) };
 		for (int i = 0; i < 6; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cHR + glm::vec3(pino[i].x, 0.0f, pino[i].y));
@@ -1467,7 +1501,7 @@ int main()
 		}
 		// HR-09 zona de aterrizaje
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cHR + glm::vec3(14.0f, 0.03f, 6.0f));
+		model = glm::translate(model, cHR + glm::vec3(19.6f, 0.03f, 8.4f));
 		model = glm::scale(model, glm::vec3(5.0f, 1.0f, 5.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		color = glm::vec3(0.72f, 0.74f, 0.68f);
@@ -1482,10 +1516,10 @@ int main()
 		// centro (0, 0, 43); coordenadas locales de la lamina 4. Por ahora son bloques en su lugar,
 		// se cambian por los modelos: SF-01 a SF-11, AB4 Arwing (F), KF2 acoplamiento en la estacion (N)
 		//=====================================================================================
-		glm::vec3 cSF = glm::vec3(0.0f, 0.0f, 86.0f);	// (posiciones locales al doble, como en los otros planetas)
+		glm::vec3 cSF = C_VENOM;	// (posiciones locales mas separadas, como en los otros planetas)
 		// SF-01 base de Andross (domo)
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cSF + glm::vec3(0.0f, 0.0f, 12.0f));
+		model = glm::translate(model, cSF + glm::vec3(0.0f, 0.0f, 16.8f));
 		model = glm::scale(model, glm::vec3(5.5f, 4.5f, 5.5f));
 		model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));	// el hemisferio es el de abajo, lo volteo
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -1495,7 +1529,7 @@ int main()
 		metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		meshListModel[HEMISFERIO]->RenderMeshModel();
 		// SF-06 columnas de roca x6
-		glm::vec2 columna[6] = { glm::vec2(-20, -12), glm::vec2(-8, -18), glm::vec2(8, -20), glm::vec2(20, -10), glm::vec2(-22, 12), glm::vec2(22, 14) };
+		glm::vec2 columna[6] = { glm::vec2(-28, -16.8f), glm::vec2(-11.2f, -25.2f), glm::vec2(11.2f, -28), glm::vec2(28, -14), glm::vec2(-30.8f, 16.8f), glm::vec2(30.8f, 19.6f) };
 		for (int i = 0; i < 6; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cSF + glm::vec3(columna[i].x, 0.0f, columna[i].y));
@@ -1509,11 +1543,11 @@ int main()
 			meshListModel[CILINDRO]->RenderMeshModel();
 		}
 		// SF-02 torres defensivas x3
-		glm::vec2 torreSF[3] = { glm::vec2(-16, 2), glm::vec2(16, 2), glm::vec2(10, 18) };
+		glm::vec2 torreSF[3] = { glm::vec2(-22.4f, 2.8f), glm::vec2(22.4f, 2.8f), glm::vec2(14, 25.2f) };
 		for (int i = 0; i < 3; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cSF + glm::vec3(torreSF[i].x, 0.0f, torreSF[i].y));
-			model = glm::rotate(model, atan2(-torreSF[i].x, 12.0f - torreSF[i].y), glm::vec3(0.0f, 1.0f, 0.0f));	// apuntan hacia la base
+			model = glm::rotate(model, atan2(-torreSF[i].x, 16.8f - torreSF[i].y), glm::vec3(0.0f, 1.0f, 0.0f));	// apuntan hacia la base
 			model = glm::scale(model, glm::vec3(3.5f, 3.5f, 3.5f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			color = glm::vec3(0.45f, 0.45f, 0.5f);
@@ -1525,7 +1559,7 @@ int main()
 		// SF-07 contenedores x6
 		for (int i = 0; i < 6; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cSF + glm::vec3(-12.0f + (i % 3) * 2.0f, 0.5f, i < 3 ? -8.0f : -10.0f));
+			model = glm::translate(model, cSF + glm::vec3(-17.0f + (i % 3) * 2.0f, 0.5f, i < 3 ? -11.0f : -13.0f));
 			model = glm::scale(model, glm::vec3(1.6f, 1.0f, 1.0f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			color = glm::vec3(0.25f, 0.36f, 0.24f);
@@ -1536,8 +1570,8 @@ int main()
 		// KF2 en la estacion, audio AMB-SF, SFX6 y SFX7
 
 
-		// ---- postes de las luminarias L1 a L6 (el foco brilla de noche) ----
-		for (int i = 0; i < 6; i++) {
+		// ---- postes de las luminarias L1 a L12 (el foco brilla de noche) ----
+		for (int i = 0; i < 12; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, posLuminaria[i]);
 			model = glm::scale(model, glm::vec3(0.2f, 4.0f, 0.2f));
