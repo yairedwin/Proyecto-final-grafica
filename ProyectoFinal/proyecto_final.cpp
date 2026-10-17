@@ -62,6 +62,8 @@ Texture rocaTexture;
 Texture metalTexture;
 Texture pistaTexture;
 Texture neonTexture;	// franjas de luz de las orillas de la pista
+Texture menuTexture[4];	// teclas de cada planeta y del espacio
+Texture pestanaTexture;	// pestaña del menu cerrado
 
 // modelos reunidos de Kenney (Space Kit, licencia CC0), en Models/kenney
 Model naveRacer;		// N1
@@ -111,6 +113,7 @@ static const char* fShader = "shaders/shader_light.frag";
 #define CONO 6
 #define DISCO 7
 #define MURO_PISTA 8
+#define CUADRO 9
 
 // la pista: elipse de semiejes 60 y 30 con centro en (0, 12, 22); sube y baja con un seno para que se vea mas futurista
 const float PISTA_A = 84.0f, PISTA_B = 42.0f, PISTA_Z = 31.0f, PISTA_ANCHO = 5.0f;
@@ -331,11 +334,32 @@ void CrearDisco()
 	meshListModel.push_back(disco);
 }
 
+// cuadro de 1 x 1 en el plano XY (de 0 a 1), para el menu de teclas que se dibuja encima de la escena
+void CrearCuadro()
+{
+	unsigned int ind[] = { 0, 1, 2, 2, 3, 0 };
+	GLfloat v[] = {
+		0.0f, 0.0f, 0.0f,	0.0f, 0.0f,	0.0f, 0.0f, -1.0f,
+		1.0f, 0.0f, 0.0f,	1.0f, 0.0f,	0.0f, 0.0f, -1.0f,
+		1.0f, 1.0f, 0.0f,	1.0f, 1.0f,	0.0f, 0.0f, -1.0f,
+		0.0f, 1.0f, 0.0f,	0.0f, 1.0f,	0.0f, 0.0f, -1.0f,
+	};
+	MeshModel* cuadro = new MeshModel();
+	cuadro->CreateMeshModel(v, ind, 32, 6);
+	meshListModel.push_back(cuadro);
+}
+
 void CreateShaders()
 {
+	// ojo: el vector guarda copias y si crece las vuelve a copiar; el destructor de Shader borra el programa de OpenGL,
+	// asi que reservo lugar para los dos desde antes (si no, el shader de luces quedaba borrado y la escena salia negra)
+	shaderList.reserve(2);
 	Shader* shader1 = new Shader();
 	shader1->CreateFromFiles(vShader, fShader);
 	shaderList.push_back(*shader1);
+	Shader* shader2 = new Shader();	// [1] menu de teclas (solo textura, sin luces)
+	shader2->CreateFromFiles("shaders/shader_hud.vert", "shaders/shader_hud.frag");
+	shaderList.push_back(*shader2);
 }
 
 
@@ -352,6 +376,7 @@ int main()
 	CrearCilindro(0.0f);	// 6 cono
 	CrearDisco();			// 7
 	CrearMuroPista();		// 8
+	CrearCuadro();			// 9
 	CreateShaders();
 
 	// camara libre: arranca viendo Mundo Forja desde arriba
@@ -372,6 +397,11 @@ int main()
 	metalTexture = Texture("Textures/metal.png");			metalTexture.LoadTextureA();
 	pistaTexture = Texture("Textures/pista_espacial.png");	pistaTexture.LoadTextureA();
 	neonTexture = Texture("Textures/neon_pista.png");		neonTexture.LoadTextureA();
+	// paneles del menu de teclas y de los letreros (los hace generar_letreros.py): 0 forja, 1 reach, 2 venom, 3 espacio
+	// (la clase Texture guarda el apuntador al nombre, no una copia, asi que los nombres tienen que seguir existiendo)
+	static const char* archivosMenu[4] = { "Textures/menu_forja.png", "Textures/menu_reach.png", "Textures/menu_venom.png", "Textures/menu_espacio.png" };
+	for (int i = 0; i < 4; i++) { menuTexture[i] = Texture(archivosMenu[i]); menuTexture[i].LoadTextureA(); }
+	pestanaTexture = Texture("Textures/menu_pestana.png");	pestanaTexture.LoadTextureA();
 
 	naveRacer = Model();		naveRacer.LoadModel("Models/kenney/craft_racer.obj");
 	naveSpeederA = Model();		naveSpeederA.LoadModel("Models/kenney/craft_speederA.obj");
@@ -408,7 +438,7 @@ int main()
 	//=========================================================================================
 	// luminarias: 4 postes por planeta, solo de noche (L1 a L12; antes eran 6, dos por planeta, como en la tabla 1.13.1)
 	glm::vec3 posLuminaria[12] = {
-		C_FORJA + glm::vec3(-20, 0, -20), C_FORJA + glm::vec3(20, 0, -17), C_FORJA + glm::vec3(-26, 0, 14), C_FORJA + glm::vec3(18, 0, 26),
+		C_FORJA + glm::vec3(-20, 0, -20), C_FORJA + glm::vec3(20, 0, -17), C_FORJA + glm::vec3(-36, 0, 10), C_FORJA + glm::vec3(18, 0, 26),
 		C_REACH + glm::vec3(-20, 0, -22), C_REACH + glm::vec3(20, 0, -20), C_REACH + glm::vec3(-24, 0, 18), C_REACH + glm::vec3(22, 0, 20),
 		C_VENOM + glm::vec3(-20, 0, -14), C_VENOM + glm::vec3(20, 0, -14), C_VENOM + glm::vec3(-24, 0, 16), C_VENOM + glm::vec3(24, 0, 18) };
 	glm::vec3 colorLuminaria[3] = { glm::vec3(1.0f, 0.8f, 0.4f), glm::vec3(0.8f, 0.9f, 1.0f), glm::vec3(0.3f, 1.0f, 0.3f) };	// forja amarillo, reach blanco azulado, venom verde
@@ -457,7 +487,7 @@ int main()
 	float tTransicion = 1.0f;	// 1 = ya llego; cuando cambia de camara se reinicia y se interpola 0.5 s
 	float anguloC4 = 0.0f;
 	// puntos de llegada para la tecla T (centro de cada planeta, en el orden P1 -> P2 -> P3)
-	glm::vec3 llegadas[3] = { C_FORJA + glm::vec3(-20.0f, 8.0f, 31.0f), C_REACH + glm::vec3(-25.0f, 8.0f, 28.0f), C_VENOM + glm::vec3(0.0f, 8.0f, -33.0f) };	// dentro de la zona del skybox de cada planeta
+	glm::vec3 llegadas[3] = { C_FORJA + glm::vec3(-30.0f, 8.0f, 24.0f), C_REACH + glm::vec3(-25.0f, 8.0f, 28.0f), C_VENOM + glm::vec3(0.0f, 8.0f, -33.0f) };	// dentro de la zona del skybox de cada planeta
 	int planetaActual = 0; bool teclaT = false;
 
 
@@ -491,6 +521,7 @@ int main()
 	// AB2 torreta: 0 quieta, 1 gira hacia la camara, 2 dispara
 	int faseTorreta = 0; float giroTorre = 0.0f, angCanon = 0.0f, retroceso = 0.0f, giroObjetivo = 0.0f; glm::vec3 posBala; glm::vec3 dirBala; float tBala = 0.0f;
 	bool teclaR = false, teclaG = false;
+	bool menuAbierto = true, teclaM = false;	// el menu de teclas arranca abierto; M lo cierra y lo abre
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		uniformSpecularIntensity = 0, uniformShininess = 0;
@@ -527,6 +558,7 @@ int main()
 			if (kfReproduciendo && kfCuadro >= 8) { kfCuadro = 0; i_curr_steps = 0; }
 		}
 		teclaH = teclas[GLFW_KEY_H];
+		if (teclas[GLFW_KEY_M] && !teclaM) menuAbierto = !menuAbierto;	teclaM = teclas[GLFW_KEY_M];
 		int modoNuevo = modoCamara;
 		if (teclas[GLFW_KEY_1]) modoNuevo = 1;
 		if (teclas[GLFW_KEY_2]) modoNuevo = 2;
@@ -1597,6 +1629,70 @@ int main()
 		// jerarquico, no humanoide, con textura + material adicional y caminata con A sin(wt + fase)
 		//=====================================================================================
 
+
+		// ---- letreros de teclas: uno en cada planeta, cerca de donde llega la camara con T ----
+		for (int i = 0; i < 3; i++) {
+			glm::vec3 llega = glm::vec3(llegadas[i].x, 0.0f, llegadas[i].z), c = centroPlaneta[i];
+			glm::vec3 dir = glm::normalize(glm::vec3(c.x - llega.x, 0.0f, c.z - llega.z));	// hacia donde mira la camara al llegar
+			glm::vec3 izq = glm::vec3(dir.z, 0.0f, -dir.x);
+			glm::vec3 posLetrero = llega + dir * 14.0f + izq * 5.0f;	// enfrente y un poco a la izquierda, para que se vea al llegar
+			glm::vec3 hacia = llega - posLetrero;
+			model = glm::mat4(1.0);
+			model = glm::translate(model, posLetrero);
+			model = glm::rotate(model, atan2(hacia.x, hacia.z), glm::vec3(0.0f, 1.0f, 0.0f));	// la cara de enfrente (+z) mira a quien llega
+			modelaux = model;
+			model = glm::scale(model, glm::vec3(0.4f, 4.0f, 0.4f));	// poste
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.3f, 0.32f, 0.38f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			plainTexture.UseTexture();
+			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
+			meshListModel[CILINDRO]->RenderMeshModel();
+			model = modelaux;	// marco de atras
+			model = glm::translate(model, glm::vec3(0.0f, 6.6f, -0.2f));
+			model = glm::scale(model, glm::vec3(6.5f, 5.6f, 0.15f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.12f, 0.13f, 0.18f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+			model = modelaux;	// panel con las teclas (la textura sale de generar_letreros.py)
+			model = glm::translate(model, glm::vec3(0.0f, 6.6f, 0.0f));
+			model = glm::scale(model, glm::vec3(6.0f, 6.0f * 880.0f / 1024.0f, 0.1f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.5f, 1.5f, 1.5f);	// un poco arriba de 1 para que se lea tambien de noche
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			menuTexture[i].UseTexture();
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+
+
+		//=====================================================================================
+		// MENU DE TECLAS (se dibuja al final, encima de todo; M lo abre y lo cierra)
+		// muestra las teclas del planeta donde esta la camara libre; en el espacio y en las otras camaras, las generales
+		//=====================================================================================
+		{
+			int zona = 3;
+			if (modoCamara == 1)
+				for (int i = 0; i < 3; i++)
+					if (glm::distance(glm::vec2(camPos.x, camPos.z), glm::vec2(centroPlaneta[i].x, centroPlaneta[i].z)) < radioPlaneta[i] + 15.0f) zona = i;
+			shaderList[1].UseShader();
+			glm::mat4 orto = glm::ortho(0.0f, (float)anchoVentana, 0.0f, (float)altoVentana);	// coordenadas en pixeles, el (0, 0) abajo a la izquierda
+			glUniformMatrix4fv(shaderList[1].GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(orto));
+			glDisable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			float margen = 0.015f * anchoVentana;
+			float ancho = menuAbierto ? 0.3f * anchoVentana : 0.17f * anchoVentana;
+			float alto = menuAbierto ? ancho * 880.0f / 1024.0f : ancho * 96.0f / 512.0f;
+			model = glm::mat4(1.0);
+			model = glm::translate(model, glm::vec3(margen, altoVentana - margen - alto, 0.0f));
+			model = glm::scale(model, glm::vec3(ancho, alto, 1.0f));
+			glUniformMatrix4fv(shaderList[1].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			if (menuAbierto) menuTexture[zona].UseTexture(); else pestanaTexture.UseTexture();
+			meshListModel[CUADRO]->RenderMeshModel();
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+		}
 
 		glUseProgram(0);
 		mainWindow.swapBuffers();
