@@ -79,6 +79,10 @@ Model generador;		// junto a las refinerias de Mundo Forja
 Model ratchetModelo;	// MF-11 figura y KF1 vuelo con el Heli-Pack
 Model vendedorGadgetron;	// MF-06
 Model clankModelo;		// Clank en la espalda de Ratchet (MF-11 y KF1)
+Model cajaTornillos, cajaNanotech, cajaMetal;	// MF-05
+Model tornilloModelo;	// MF-04
+Model tornilloOro;		// tornillo de oro flotando en el centro de Mundo Forja
+Model naveRatchet;		// la Aphelion, estacionada junto al planeta
 
 // un skybox por zona: espacio y uno por planeta
 Skybox skyEspacio;
@@ -416,6 +420,12 @@ int main()
 	ratchetModelo = Model();	ratchetModelo.LoadModel("Models/rc/ratchet.obj");
 	vendedorGadgetron = Model();	vendedorGadgetron.LoadModel("Models/rc/vendedor.obj");
 	clankModelo = Model();		clankModelo.LoadModel("Models/rc/clank.obj");
+	cajaTornillos = Model();	cajaTornillos.LoadModel("Models/rc/caja_tornillos.obj");
+	cajaNanotech = Model();		cajaNanotech.LoadModel("Models/rc/caja_nanotech.obj");
+	cajaMetal = Model();		cajaMetal.LoadModel("Models/rc/caja_metal.obj");
+	tornilloModelo = Model();	tornilloModelo.LoadModel("Models/rc/tornillo.obj");
+	tornilloOro = Model();		tornilloOro.LoadModel("Models/rc/tornillo_oro.obj");
+	naveRatchet = Model();		naveRatchet.LoadModel("Models/rc/nave_ratchet.obj");
 
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -838,7 +848,7 @@ int main()
 			model = glm::rotate(model, glm::radians(giro), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(-pendiente), glm::vec3(1.0f, 0.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(-12.0f), glm::vec3(0.0f, 0.0f, 1.0f));	// se inclina hacia adentro de la curva
-			// modelos de Kenney (Space Kit, CC0): craft_racer, craft_speederA y craft_speederB
+			// modelos de Kenney (Space Kit, CC0): craft_racer, craft_speederA y craft_speederB (N1 queda para el hoverbike del juego)
 			model = glm::scale(model, glm::vec3(2.4f, 2.4f, 2.4f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			color = colorNave[i];
@@ -1131,30 +1141,30 @@ int main()
 		for (int i = 0; i < 12; i++) {
 			float y = tornillo[i].y + 0.25f * sin(2.0f * PI * now / 2.0f + i * 0.7f);
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cMF + glm::vec3(tornillo[i].x, y, tornillo[i].z));
+			model = glm::translate(model, cMF + glm::vec3(tornillo[i].x, y - 0.5f, tornillo[i].z));	// el modelo nace en su base, lo bajo medio tornillo
 			model = glm::rotate(model, glm::radians(90.0f * now), glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+			model = glm::scale(model, glm::vec3(0.085f, 0.085f, 0.085f));	// mide 11.6 de alto, queda de ~1
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.95f, 0.75f, 0.1f);	// dorado
+			color = glm::vec3(1.0f, 1.0f, 1.0f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			plainTexture.UseTexture();
 			metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			meshListModel[TORNILLO]->RenderMeshModel();
+			tornilloModelo.RenderModel();	// modelo del juego (antes era el prisma hexagonal TORNILLO)
 		}
-		// MF-05 cajas x8 junto al vendedor (de tornillos naranjas y de nanotech azules)
+		// MF-05 cajas x8 junto al vendedor: de tornillos, de nanotech y de metal (modelos del juego, miden 24, quedan de 1.1)
 		glm::vec3 caja[8] = { glm::vec3(-12.6f, 0, 0), glm::vec3(-12.6f, 0, 2.8f), glm::vec3(-12.6f, 1.1f, 1.4f), glm::vec3(-14.7f, 0, 5.6f), glm::vec3(-10.5f, 0, 7),
 			glm::vec3(1, 0, 3), glm::vec3(2.3f, 0, 4.6f), glm::vec3(1.4f, 1.1f, 3.6f) };
 		for (int i = 0; i < 8; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cMF + caja[i] + glm::vec3(0.0f, 0.55f, 0.0f));
+			model = glm::translate(model, cMF + caja[i]);	// el modelo nace en su base
 			model = glm::rotate(model, glm::radians(i * 23.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+			model = glm::scale(model, glm::vec3(0.046f, 0.046f, 0.046f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = i % 2 ? glm::vec3(0.85f, 0.48f, 0.12f) : glm::vec3(0.25f, 0.6f, 0.85f);
+			color = glm::vec3(1.0f, 1.0f, 1.0f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			metalTexture.UseTexture();
 			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			meshListModel[CUBO]->RenderMeshModel();
+			if (i % 3 == 0) cajaTornillos.RenderModel();
+			else if (i % 3 == 1) cajaNanotech.RenderModel();
+			else cajaMetal.RenderModel();
 		}
 		// MF-06 vendedor Gadgetron (modelo del juego, mide 66 de alto, lo dejo en ~6)
 		model = glm::mat4(1.0);
@@ -1469,6 +1479,26 @@ int main()
 				plainTexture.UseTexture();
 				meshListModel[CUBO]->RenderMeshModel();
 			}
+		// tornillo de oro (modelo del juego): flota y gira sobre el centro, con su luz dorada como pista de que es especial
+		model = glm::mat4(1.0);
+		model = glm::translate(model, cMF + glm::vec3(-2.0f, 2.5f + 0.4f * sin(1.5f * now), -12.0f));
+		model = glm::rotate(model, glm::radians(60.0f * now), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.08f, 0.08f, 0.08f));	// mide 26.5 de alto, queda de ~2
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(1.3f, 1.2f, 0.9f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		tornilloOro.RenderModel();
+		// la Aphelion (nave de Ratchet, modelo del juego) estacionada en el aire junto a la orilla suroeste; sube y baja despacio
+		model = glm::mat4(1.0);
+		model = glm::translate(model, cMF + glm::vec3(-27.0f, 5.0f + 0.6f * sin(0.7f * now), 36.0f));
+		model = glm::rotate(model, glm::radians(40.0f + 4.0f * sin(0.5f * now)), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.11f, 0.11f, 0.11f));	// mide 89 de ancho, queda de ~10
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		naveRatchet.RenderModel();
 		// pendiente en Mundo Forja: audio AMB-MF y SFX1 a SFX4 (en teoria, con irrKlang)
 
 		//=====================================================================================
