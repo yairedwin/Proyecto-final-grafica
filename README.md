@@ -15,6 +15,6 @@ Solo el código del proyecto, en `ProyectoFinal/`. Se abre `ProyectoFinal/Proyec
 
 ## Imágenes, modelos y documento
 
-Las imágenes, los modelos 3D y el documento están en Google Drive:
+Las imágenes, los modelos 3D y el documento están en Google Drive. Los modelos de Ratchet & Clank (`Models/rc` y las texturas `rc_*`) no se suben aquí: hay que copiarlos del Drive a la carpeta del proyecto antes de compilar.
 
 **Enlace a Drive:** _(pendiente de agregar)_

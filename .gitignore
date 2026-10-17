@@ -7,3 +7,7 @@ Release/
 *.pdb
 *.ilk
 *.tlog
+
+# modelos de Ratchet & Clank (van en el Drive, no en el repo)
+ProyectoFinal/Models/rc/
+ProyectoFinal/Textures/rc_*
