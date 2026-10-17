@@ -62,7 +62,7 @@ Texture rocaTexture;
 Texture metalTexture;
 Texture pistaTexture;
 Texture neonTexture;	// franjas de luz de las orillas de la pista
-Texture menuTexture[4];	// teclas de cada planeta y del espacio
+Texture menuTexture[4];	// teclas de cada planeta y del espacio (menu que se abre con M)
 Texture pestanaTexture;	// pestaña del menu cerrado
 
 // modelos reunidos de Kenney (Space Kit, licencia CC0), en Models/kenney
@@ -78,6 +78,7 @@ Model generador;		// junto a las refinerias de Mundo Forja
 // modelos de Ratchet & Clank (The Models Resource, de los juegos), en Models/rc
 Model ratchetModelo;	// MF-11 figura y KF1 vuelo con el Heli-Pack
 Model vendedorGadgetron;	// MF-06
+Model clankModelo;		// Clank en la espalda de Ratchet (MF-11 y KF1)
 
 // un skybox por zona: espacio y uno por planeta
 Skybox skyEspacio;
@@ -397,7 +398,7 @@ int main()
 	metalTexture = Texture("Textures/metal.png");			metalTexture.LoadTextureA();
 	pistaTexture = Texture("Textures/pista_espacial.png");	pistaTexture.LoadTextureA();
 	neonTexture = Texture("Textures/neon_pista.png");		neonTexture.LoadTextureA();
-	// paneles del menu de teclas y de los letreros (los hace generar_letreros.py): 0 forja, 1 reach, 2 venom, 3 espacio
+	// paneles del menu de teclas (los hace generar_letreros.py): 0 forja, 1 reach, 2 venom, 3 espacio
 	// (la clase Texture guarda el apuntador al nombre, no una copia, asi que los nombres tienen que seguir existiendo)
 	static const char* archivosMenu[4] = { "Textures/menu_forja.png", "Textures/menu_reach.png", "Textures/menu_venom.png", "Textures/menu_espacio.png" };
 	for (int i = 0; i < 4; i++) { menuTexture[i] = Texture(archivosMenu[i]); menuTexture[i].LoadTextureA(); }
@@ -414,6 +415,7 @@ int main()
 	generador = Model();		generador.LoadModel("Models/kenney/machine_generatorLarge.obj");
 	ratchetModelo = Model();	ratchetModelo.LoadModel("Models/rc/ratchet.obj");
 	vendedorGadgetron = Model();	vendedorGadgetron.LoadModel("Models/rc/vendedor.obj");
+	clankModelo = Model();		clankModelo.LoadModel("Models/rc/clank.obj");
 
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -513,7 +515,7 @@ int main()
 	float kfGiro[9] = { 0.0f, 140.0f, 149.0f, 100.0f, 30.0f, -25.0f, -70.0f, -100.0f, 0.0f };
 	// ajustes de los modelos del juego: hacia donde miran y donde va Clank en la espalda de Ratchet (en unidades del modelo)
 	float giroBaseRatchet = -90.0f, giroVendedor = 0.0f;
-	glm::vec3 clankEspalda = glm::vec3(-0.32f, 0.85f, 0.0f);
+	glm::vec3 clankEspalda = glm::vec3(-0.32f, 0.72f, 0.0f);	// desde los pies de Clank
 	const int i_max_steps = 90;
 	int kfCuadro = 0, i_curr_steps = 0; bool kfReproduciendo = false, teclaH = false;
 	glm::vec3 kfActual = kfPos[0]; float kfGiroActual = kfGiro[0]; float kfAcum = 0.0f;
@@ -1444,44 +1446,27 @@ int main()
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		ratchetModelo.RenderModel();
-		// Clank en la espalda (hijo de Ratchet): cuerpo, cabeza, antena y, si va volando, el Heli-Pack girando
+		// Clank en la espalda (hijo de Ratchet): modelo del juego, mide 16.4 de alto; de espaldas a Ratchet, como mochila
 		model = modelaux;
 		model = glm::translate(model, clankEspalda);
 		glm::mat4 clank = model;
-		model = glm::scale(model, glm::vec3(0.22f, 0.3f, 0.26f));
+		model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.034f, 0.034f, 0.034f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(0.75f, 0.78f, 0.82f);
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		plainTexture.UseTexture();
 		metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		meshListModel[CUBO]->RenderMeshModel();
-		model = clank;
-		model = glm::translate(model, glm::vec3(0.0f, 0.27f, 0.0f));
-		glm::mat4 cabezaClank = model;
-		model = glm::scale(model, glm::vec3(0.2f, 0.17f, 0.28f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		meshListModel[ESFERA]->RenderMeshModel();
-		model = cabezaClank;	// antena con la bolita roja
-		model = glm::translate(model, glm::vec3(0.0f, 0.15f, 0.0f));
-		model = glm::scale(model, glm::vec3(0.03f, 0.15f, 0.03f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		meshListModel[CILINDRO]->RenderMeshModel();
-		model = cabezaClank;
-		model = glm::translate(model, glm::vec3(0.0f, 0.32f, 0.0f));
-		model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(1.6f, 0.2f, 0.15f);
-		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		meshListModel[ESFERA]->RenderMeshModel();
+		clankModelo.RenderModel();
 		if (volando)
 			for (int k = 0; k < 2; k++) {	// aspas del Heli-Pack: giran rapido en Y sobre la cabeza de Clank
-				model = cabezaClank;
-				model = glm::translate(model, glm::vec3(0.0f, 0.25f, 0.0f));
+				model = clank;
+				model = glm::translate(model, glm::vec3(0.0f, 0.6f, 0.0f));
 				model = glm::rotate(model, glm::radians(now * 1080.0f + k * 90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 				model = glm::scale(model, glm::vec3(1.1f, 0.02f, 0.09f));
 				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 				color = glm::vec3(0.95f, 0.8f, 0.2f);
 				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				plainTexture.UseTexture();
 				meshListModel[CUBO]->RenderMeshModel();
 			}
 		// pendiente en Mundo Forja: audio AMB-MF y SFX1 a SFX4 (en teoria, con irrKlang)
@@ -1628,42 +1613,6 @@ int main()
 		// 8. AVATAR (pendiente: el equipo va a definir el personaje)
 		// jerarquico, no humanoide, con textura + material adicional y caminata con A sin(wt + fase)
 		//=====================================================================================
-
-
-		// ---- letreros de teclas: uno en cada planeta, cerca de donde llega la camara con T ----
-		for (int i = 0; i < 3; i++) {
-			glm::vec3 llega = glm::vec3(llegadas[i].x, 0.0f, llegadas[i].z), c = centroPlaneta[i];
-			glm::vec3 dir = glm::normalize(glm::vec3(c.x - llega.x, 0.0f, c.z - llega.z));	// hacia donde mira la camara al llegar
-			glm::vec3 izq = glm::vec3(dir.z, 0.0f, -dir.x);
-			glm::vec3 posLetrero = llega + dir * 14.0f + izq * 5.0f;	// enfrente y un poco a la izquierda, para que se vea al llegar
-			glm::vec3 hacia = llega - posLetrero;
-			model = glm::mat4(1.0);
-			model = glm::translate(model, posLetrero);
-			model = glm::rotate(model, atan2(hacia.x, hacia.z), glm::vec3(0.0f, 1.0f, 0.0f));	// la cara de enfrente (+z) mira a quien llega
-			modelaux = model;
-			model = glm::scale(model, glm::vec3(0.4f, 4.0f, 0.4f));	// poste
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.3f, 0.32f, 0.38f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			plainTexture.UseTexture();
-			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			meshListModel[CILINDRO]->RenderMeshModel();
-			model = modelaux;	// marco de atras
-			model = glm::translate(model, glm::vec3(0.0f, 6.6f, -0.2f));
-			model = glm::scale(model, glm::vec3(6.5f, 5.6f, 0.15f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.12f, 0.13f, 0.18f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			meshListModel[CUBO]->RenderMeshModel();
-			model = modelaux;	// panel con las teclas (la textura sale de generar_letreros.py)
-			model = glm::translate(model, glm::vec3(0.0f, 6.6f, 0.0f));
-			model = glm::scale(model, glm::vec3(6.0f, 6.0f * 880.0f / 1024.0f, 0.1f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(1.5f, 1.5f, 1.5f);	// un poco arriba de 1 para que se lea tambien de noche
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			menuTexture[i].UseTexture();
-			meshListModel[CUBO]->RenderMeshModel();
-		}
 
 
 		//=====================================================================================
