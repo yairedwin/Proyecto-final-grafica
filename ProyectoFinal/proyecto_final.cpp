@@ -1,6 +1,5 @@
 ﻿/*
 Proyecto final CGeIHC 2027-1 · Sistema Tres Mundos
-Base: codigo de la practica 7 (iluminacion).
 Secciones del main (cada quien trabaja en la suya y en su rama):
   1. Geometria hecha en codigo ................ comun
   2. Iluminacion: sol, luminarias, spotlights  comun
@@ -38,7 +37,6 @@ X acelera el ciclo de dia (solo pruebas)
 #include "Texture.h"
 #include "Model.h"
 #include "Skybox.h"
-#include "Audio.h"
 
 #include "CommonValues.h"
 #include "DirectionalLight.h"
@@ -54,7 +52,7 @@ std::vector<Shader> shaderList;
 
 Camera camera;
 
-// texturas (las de terreno y skybox las hicimos con generar_texturas.py)
+// texturas (terreno y skybox)
 Texture plainTexture;
 Texture forjaTexture;
 Texture reachTexture;
@@ -65,7 +63,7 @@ Texture pistaTexture;
 Texture neonTexture;	// franjas de luz de las orillas de la pista
 Texture menuTexture[4];	// teclas de cada planeta y del espacio (menu que se abre con M)
 Texture pestanaTexture;	// pestaña del menu cerrado
-Texture solarTexture;		// paneles solares de la estacion y los satelites (generar_espacio.py)
+Texture solarTexture;		// paneles solares de la estacion y los satelites
 Texture ventanasTexture;	// ventanas prendidas de la estacion
 Texture planetaTexture[4];	// cuerpos celestes: gaseoso, hielo, lava, alien
 Texture anilloTexture;
@@ -75,8 +73,6 @@ Model naveSpeederA;		// N2 (N1 es el hoverbike de Ratchet & Clank)
 Model naveSpeederB;		// N3
 Model antenaSatelite;	// satelites del espacio
 Model meteoro;			// asteroides
-Model hangarReach;		// HR-01
-Model torretaDoble;		// SF-02
 Model chimenea;			// MF-01
 Model generador;		// junto a las refinerias de Mundo Forja
 // modelos de Ratchet & Clank (The Models Resource, de los juegos), en Models/rc
@@ -88,6 +84,7 @@ Model cajaTornillos, cajaNanotech, cajaMetal;	// MF-05
 Model tornilloModelo;	// MF-04
 Model tornilloOro;		// tornillo de oro flotando en el centro de Mundo Forja
 Model naveRatchet;		// la Aphelion, estacionada junto al planeta
+Model Etapa1_M, Etapa2_M, Etapa3_M;	// cohete Saturn V en tres etapas; juntas forman el cohete completo (AB1)
 
 // un skybox por zona: espacio y uno por planeta
 Skybox skyEspacio;
@@ -130,9 +127,9 @@ static const char* fShader = "shaders/shader_light.frag";
 const float PISTA_A = 84.0f, PISTA_B = 42.0f, PISTA_Z = 31.0f, PISTA_ANCHO = 5.0f;
 float alturaPista(float t) { return 16.0f + 3.5f * sin(2.0f * t); }
 
-// centro y radio de cada planeta (17-oct: el profe pidio mundos mas grandes; si se vuelven a agrandar, se cambia aqui)
+// centro y radio de cada planeta (si se vuelven a agrandar los mundos, se cambia aqui)
 const glm::vec3 C_FORJA = glm::vec3(-126.0f, 0.0f, -50.0f), C_REACH = glm::vec3(126.0f, 0.0f, -50.0f), C_VENOM = glm::vec3(0.0f, 0.0f, 120.0f);
-const float R_FORJA = 40.0f, R_REACH = 40.0f, R_VENOM = 38.0f;
+const float R_FORJA = 80.0f, R_REACH = 80.0f, R_VENOM = 76.0f;
 const glm::vec3 C_ESTACION = glm::vec3(0.0f, 84.0f, -81.0f);
 const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);	// plataforma de lanzamiento, en el norte de Mundo Forja
 
@@ -328,7 +325,7 @@ void CrearCilindro(float rArriba)
 	meshListModel.push_back(cil);
 }
 
-// disco de radio 1 en y = 0 (piso de los planetas y de la plataforma); la textura se repite 12 veces (los planetas ya son el doble de grandes)
+// disco de radio 1 en y = 0 (piso de los planetas y de la plataforma); la textura se repite 24 veces (los planetas son cuatro veces mas grandes que al principio)
 void CrearDisco()
 {
 	std::vector<GLfloat> v;
@@ -337,7 +334,7 @@ void CrearDisco()
 	v.insert(v.end(), { 0.0f, 0.0f, 0.0f,	0.0f, 0.0f,	0.0f, -1.0f, 0.0f });
 	for (int i = 0; i <= n; i++) {
 		float a = 2.0f * PI * i / n;
-		v.insert(v.end(), { cos(a), 0.0f, sin(a),	12.0f * cos(a), 12.0f * sin(a),	0.0f, -1.0f, 0.0f });
+		v.insert(v.end(), { cos(a), 0.0f, sin(a),	24.0f * cos(a), 24.0f * sin(a),	0.0f, -1.0f, 0.0f });
 	}
 	for (int i = 0; i < n; i++) { ind.push_back(0); ind.push_back(1 + i); ind.push_back(2 + i); }
 	MeshModel* disco = new MeshModel();
@@ -429,7 +426,7 @@ int main()
 	metalTexture = Texture("Textures/metal.png");			metalTexture.LoadTextureA();
 	pistaTexture = Texture("Textures/pista_espacial.png");	pistaTexture.LoadTextureA();
 	neonTexture = Texture("Textures/neon_pista.png");		neonTexture.LoadTextureA();
-	// paneles del menu de teclas (los hace generar_letreros.py): 0 forja, 1 reach, 2 venom, 3 espacio
+	// paneles del menu de teclas : 0 forja, 1 reach, 2 venom, 3 espacio
 	// (la clase Texture guarda el apuntador al nombre, no una copia, asi que los nombres tienen que seguir existiendo)
 	static const char* archivosMenu[4] = { "Textures/menu_forja.png", "Textures/menu_reach.png", "Textures/menu_venom.png", "Textures/menu_espacio.png" };
 	for (int i = 0; i < 4; i++) { menuTexture[i] = Texture(archivosMenu[i]); menuTexture[i].LoadTextureA(); }
@@ -444,8 +441,6 @@ int main()
 	naveSpeederB = Model();		naveSpeederB.LoadModel("Models/kenney/craft_speederB.obj");
 	antenaSatelite = Model();	antenaSatelite.LoadModel("Models/kenney/satelliteDish_large.obj");
 	meteoro = Model();			meteoro.LoadModel("Models/kenney/meteor_detailed.obj");
-	hangarReach = Model();		hangarReach.LoadModel("Models/kenney/hangar_largeA.obj");
-	torretaDoble = Model();		torretaDoble.LoadModel("Models/kenney/turret_double.obj");
 	chimenea = Model();			chimenea.LoadModel("Models/kenney/chimney_detailed.obj");
 	generador = Model();		generador.LoadModel("Models/kenney/machine_generatorLarge.obj");
 	ratchetModelo = Model();	ratchetModelo.LoadModel("Models/rc/ratchet.obj");
@@ -458,22 +453,9 @@ int main()
 	tornilloModelo = Model();	tornilloModelo.LoadModel("Models/rc/tornillo.obj");
 	tornilloOro = Model();		tornilloOro.LoadModel("Models/rc/tornillo_oro.obj");
 	naveRatchet = Model();		naveRatchet.LoadModel("Models/rc/nave_ratchet.obj");
-
-	// audio (los sonidos los hace generar_audio.py): soundtrack, dos ambientes que suben o bajan con la distancia y cuatro efectos
-	Audio::Abrir("musica", "audio/musica_espacio.wav");
-	Audio::Abrir("ambForja", "audio/ambiente_forja.wav");
-	Audio::Abrir("ambEstacion", "audio/ambiente_estacion.wav");
-	Audio::Abrir("cohete", "audio/sfx_cohete.wav");
-	Audio::Abrir("torreta", "audio/sfx_torreta.wav");
-	Audio::Abrir("tornillo", "audio/sfx_tornillo.wav");
-	Audio::Abrir("vendedor", "audio/sfx_vendedor.wav");
-	Audio::Abrir("heli", "audio/sfx_heli.wav");
-	Audio::Volumen("musica", 220);
-	Audio::Volumen("ambForja", 0);
-	Audio::Volumen("ambEstacion", 0);
-	Audio::Reproducir("musica", true);
-	Audio::Reproducir("ambForja", true);
-	Audio::Reproducir("ambEstacion", true);
+	Etapa1_M = Model();		Etapa1_M.LoadModel("Models/Cohete/Etapa1.obj");	// sus texturas las lee de saturn_v.mtl
+	Etapa2_M = Model();		Etapa2_M.LoadModel("Models/Cohete/Etapa2.obj");
+	Etapa3_M = Model();		Etapa3_M.LoadModel("Models/Cohete/Etapa3.obj");
 
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -582,10 +564,8 @@ int main()
 	int faseTorreta = 0; float giroTorre = 0.0f, angCanon = 0.0f, retroceso = 0.0f, giroObjetivo = 0.0f; glm::vec3 posBala; glm::vec3 dirBala; float tBala = 0.0f;
 	bool teclaR = false, teclaG = false;
 	bool menuAbierto = true, teclaM = false;	// el menu de teclas arranca abierto; M lo cierra y lo abre
-	// audio condicional: tornillos recogidos (SFX1), saludo del vendedor (SFX3) y el Heli-Pack mientras vuela
 	// (por ahora se usa la camara libre en lugar del avatar; cuando este el avatar se cambia camPos por su posicion)
 	float tornilloOculto[12] = { 0 };	// segundos que le faltan al tornillo para reaparecer
-	bool vendedorSaludo = false, heliSonando = false;
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		uniformSpecularIntensity = 0, uniformShininess = 0;
@@ -609,7 +589,7 @@ int main()
 		if (teclas[GLFW_KEY_L] && !teclaL) s1Prendido = !s1Prendido;	teclaL = teclas[GLFW_KEY_L];
 		if (teclas[GLFW_KEY_K] && !teclaK) s2Prendido = !s2Prendido;	teclaK = teclas[GLFW_KEY_K];
 		if (teclas[GLFW_KEY_X] && !teclaX) velocidadDia = velocidadDia > 1.0f ? 1.0f : 10.0f;	teclaX = teclas[GLFW_KEY_X];
-		if (teclas[GLFW_KEY_R] && !teclaR && faseCohete == 0) { faseCohete = 1; tCohete = 0.0f; Audio::Reproducir("cohete", false); }	teclaR = teclas[GLFW_KEY_R];	// SFX2
+		if (teclas[GLFW_KEY_R] && !teclaR && faseCohete == 0) { faseCohete = 1; tCohete = 0.0f; }	teclaR = teclas[GLFW_KEY_R];
 		if (teclas[GLFW_KEY_G] && !teclaG && faseTorreta == 0) {
 			faseTorreta = 1;
 			glm::vec3 t = C_FORJA + glm::vec3(-11.2f, 0.0f, -28.0f);	// torreta de la izquierda de la plataforma
@@ -693,7 +673,6 @@ int main()
 			angCanon = glm::min(angCanon + 20.0f * dt, 15.0f);
 			if (fabs(dif) < 1.0f && angCanon >= 15.0f) {
 				faseTorreta = 2; tBala = 0.0f; retroceso = 0.3f;
-				Audio::Reproducir("torreta", false);	// SFX4
 				posBala = C_FORJA + glm::vec3(-11.2f, 2.2f, -28.0f);
 				dirBala = glm::vec3(sin(glm::radians(giroTorre)), -sin(glm::radians(angCanon)) * 0.3f, cos(glm::radians(giroTorre)));
 			}
@@ -733,24 +712,6 @@ int main()
 		else { camPos = destPos; camMira = destMira; }
 		glm::mat4 vista = glm::lookAt(camPos, camMira, glm::vec3(0.0f, 1.0f, 0.0f));
 
-		// ---------------- audio que depende de donde esta la camara ----------------
-		{
-			// ambientes: el volumen baja con la distancia (cuadratico, como se oye de verdad mas o menos)
-			float dForja = glm::distance(camPos, C_FORJA + glm::vec3(25.0f, 4.0f, 1.0f));	// la refineria
-			float dEstacion = glm::distance(camPos, C_ESTACION);
-			float vF = glm::clamp(1.0f - dForja / 75.0f, 0.0f, 1.0f), vE = glm::clamp(1.0f - dEstacion / 90.0f, 0.0f, 1.0f);
-			Audio::Volumen("ambForja", (int)(900.0f * vF * vF));
-			Audio::Volumen("ambEstacion", (int)(800.0f * vE * vE));
-			// SFX3: el vendedor saluda una vez cada que alguien se le acerca
-			float dVendedor = glm::distance(camPos, C_FORJA + glm::vec3(-5.6f, 2.0f, 2.8f));
-			if (modoCamara == 1 && dVendedor < 10.0f && !vendedorSaludo) { vendedorSaludo = true; Audio::Reproducir("vendedor", false); }
-			if (dVendedor > 16.0f) vendedorSaludo = false;
-			// Heli-Pack: suena en bucle solo mientras Ratchet esta volando
-			bool vuela = kfReproduciendo || (kfCuadro > 0 && kfCuadro < 8);
-			if (vuela && !heliSonando) { Audio::Reproducir("heli", true); heliSonando = true; }
-			if (!vuela && heliSonando) { Audio::Detener("heli"); heliSonando = false; }
-			if (vuela) Audio::Volumen("heli", (int)(1000.0f * glm::clamp(1.0f - glm::distance(camPos, C_FORJA + glm::vec3(2.8f, 0.0f, 19.6f) + kfActual) / 60.0f, 0.0f, 1.0f)));
-		}
 
 		// ---------------- sol: ciclo de 120 s ----------------
 		tiempoDia += dt * velocidadDia;
@@ -1074,45 +1035,20 @@ int main()
 		model = glm::scale(model, glm::vec3(3.8f, 0.4f, 0.4f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		meshListModel[CUBO]->RenderMeshModel();
-		// cohete: cuerpo -> nariz, 3 propulsores y 3 aletas
+		// cohete Saturn V: las tres etapas juntas forman el cohete completo
 		if (faseCohete != 4) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, posCohete);
 			model = glm::rotate(model, glm::radians(inclinaCohete), glm::vec3(0.0f, 0.0f, 1.0f));
-			model = glm::scale(model, glm::vec3(1.4f, 1.4f, 1.4f));	// mas grande ahora que el planeta crecio
-			modelaux = model;
-			model = glm::translate(model, glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1.6f, 5.0f, 1.6f));
+			model = glm::translate(model, glm::vec3(0.0f, 4.5f * 1.6f, 0.0f));	// el modelo esta centrado en su mitad, lo subo para que la base quede en el piso
+			model = glm::scale(model, glm::vec3(1.6f, 1.6f, 1.6f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.9f, 0.45f, 0.15f);	// naranja como la Aphelion
+			color = glm::vec3(1.0f, 1.0f, 1.0f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			meshListModel[CILINDRO]->RenderMeshModel();
-			model = modelaux;
-			model = glm::translate(model, glm::vec3(0.0f, 6.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1.6f, 2.0f, 1.6f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.7f, 0.72f, 0.76f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			meshListModel[CONO]->RenderMeshModel();
-			for (int i = 0; i < 3; i++) {
-				model = modelaux;
-				model = glm::rotate(model, glm::radians(i * 120.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				modelaux2 = model;
-				model = glm::translate(model, glm::vec3(0.85f, 0.0f, 0.0f));	// propulsor
-				model = glm::scale(model, glm::vec3(0.6f, 2.2f, 0.6f));
-				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-				meshListModel[CILINDRO]->RenderMeshModel();
-				model = modelaux2;
-				model = glm::translate(model, glm::vec3(1.1f, 1.3f, 0.0f));	// aleta
-				model = glm::scale(model, glm::vec3(1.0f, 1.6f, 0.12f));
-				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-				color = glm::vec3(0.9f, 0.45f, 0.15f);
-				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-				meshListModel[CUBO]->RenderMeshModel();
-				color = glm::vec3(0.7f, 0.72f, 0.76f);
-				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			}
+			metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
+			Etapa3_M.RenderModel();
+			Etapa2_M.RenderModel();
+			Etapa1_M.RenderModel();
 		}
 
 		// ---- CE1 a CE5 cuerpos celestes: planeta gaseoso con anillo, luna de hielo, planeta de lava, planeta alien y una luna de roca ----
@@ -1326,9 +1262,9 @@ int main()
 			}
 		tornillo[8] = glm::vec3(2.8f, 1.2f, -5.6f); tornillo[9] = glm::vec3(7, 1.2f, -1.4f); tornillo[10] = glm::vec3(-1.4f, 1.2f, -9.8f); tornillo[11] = glm::vec3(11.2f, 1.2f, -7);
 		for (int i = 0; i < 12; i++) {
-			// SFX1: si la camara libre (despues el avatar) pasa junto al tornillo, se recoge: suena y desaparece 8 s
+			// si la camara libre (despues el avatar) pasa junto al tornillo, se recoge y desaparece 8 s
 			if (tornilloOculto[i] > 0.0f) { tornilloOculto[i] -= dt; continue; }
-			if (modoCamara == 1 && glm::distance(camPos, cMF + tornillo[i]) < 2.5f) { tornilloOculto[i] = 8.0f; Audio::Reproducir("tornillo", false); continue; }
+			if (modoCamara == 1 && glm::distance(camPos, cMF + tornillo[i]) < 2.5f) { tornilloOculto[i] = 8.0f; continue; }
 			float y = tornillo[i].y + 0.25f * sin(2.0f * PI * now / 2.0f + i * 0.7f);
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + glm::vec3(tornillo[i].x, y - 0.5f, tornillo[i].z));	// el modelo nace en su base, lo bajo medio tornillo
@@ -1689,122 +1625,23 @@ int main()
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		naveRatchet.RenderModel();
-		// pendiente en Mundo Forja: audio AMB-MF y SFX1 a SFX4 (en teoria, con irrKlang)
 
 		//=====================================================================================
 		// 6. P2 REACH (Halo) · 317136421
-		// centro (45, 0, -18); coordenadas locales de la lamina 3. Por ahora son bloques en su lugar,
-		// se cambian por los modelos: HR-01 a HR-14, AB3 Pelican (P), AC3 antena, AC4 escudos, AC5 plataformas MAC
+		// apartado de este integrante: aqui solo se integran sus modelos (HR-01 a HR-14, AB3 Pelican, AC3 antena, AC4 escudos, AC5 plataformas MAC)
+		// las posiciones van locales, sumadas a cHR (centro del planeta); radio R_REACH
+		// pasos: 1) declarar el Model junto a los demas  2) cargarlo con LoadModel en main  3) dibujarlo aqui
 		//=====================================================================================
-		glm::vec3 cHR = C_REACH;	// (los planetas crecieron: las posiciones locales van mas separadas)
-		// HR-01 base UNSC: hangar de Kenney (Space Kit, CC0) mientras llega el modelo de Blender
-		model = glm::mat4(1.0);
-		model = glm::translate(model, cHR + glm::vec3(-8.4f, 0.0f, -11.2f));
-		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));	// el lado largo del hangar va a lo ancho
-		model = glm::scale(model, glm::vec3(3.6f, 3.6f, 3.6f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(0.62f, 0.65f, 0.63f);
-		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		hangarReach.RenderModel();
-		plainTexture.UseTexture();
-		// HR-02 barricadas x4
-		glm::vec2 barricada[4] = { glm::vec2(-22.4f, -8.4f), glm::vec2(-22.4f, 8.4f), glm::vec2(0, 8.4f), glm::vec2(8.4f, -5.6f) };
-		for (int i = 0; i < 4; i++) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, cHR + glm::vec3(barricada[i].x, 0.4f, barricada[i].y));
-			model = glm::scale(model, glm::vec3(2.0f, 0.8f, 0.5f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			meshListModel[CUBO]->RenderMeshModel();
-		}
-		// HR-04a pinos x6
-		glm::vec2 pino[6] = { glm::vec2(-25.2f, -25.2f), glm::vec2(-14, -30.8f), glm::vec2(14, -28), glm::vec2(28, -19.6f), glm::vec2(-28, 19.6f), glm::vec2(19.6f, 28) };
-		for (int i = 0; i < 6; i++) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, cHR + glm::vec3(pino[i].x, 0.0f, pino[i].y));
-			modelaux = model;
-			model = glm::scale(model, glm::vec3(0.4f, 1.5f, 0.4f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.4f, 0.28f, 0.16f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			meshListModel[CILINDRO]->RenderMeshModel();
-			model = modelaux;
-			model = glm::translate(model, glm::vec3(0.0f, 1.2f, 0.0f));
-			model = glm::scale(model, glm::vec3(2.4f, 4.5f, 2.4f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.18f, 0.42f, 0.24f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			meshListModel[CONO]->RenderMeshModel();
-		}
-		// HR-09 zona de aterrizaje
-		model = glm::mat4(1.0);
-		model = glm::translate(model, cHR + glm::vec3(19.6f, 0.03f, 8.4f));
-		model = glm::scale(model, glm::vec3(5.0f, 1.0f, 5.0f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(0.72f, 0.74f, 0.68f);
-		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		meshListModel[DISCO]->RenderMeshModel();
-		// pendiente en Reach: HR-03 torre + antena (AC3), HR-05 Warthog, HR-06 Pelican (AB3), HR-07 cajas, HR-08 escudos (AC4),
-		// HR-10 plataformas MAC (AC5), NPCs HR-11 a HR-14, audio AMB-HR y SFX5
+		glm::vec3 cHR = C_REACH;
 
 
 		//=====================================================================================
 		// 7. P3 VENOM (Star Fox 64) · 318337872
-		// centro (0, 0, 43); coordenadas locales de la lamina 4. Por ahora son bloques en su lugar,
-		// se cambian por los modelos: SF-01 a SF-11, AB4 Arwing (F), KF2 acoplamiento en la estacion (N)
+		// apartado de este integrante: aqui solo se integran sus modelos (SF-01 a SF-11, AB4 Arwing, KF2 acoplamiento en la estacion)
+		// las posiciones van locales, sumadas a cSF (centro del planeta); radio R_VENOM
+		// pasos: 1) declarar el Model junto a los demas  2) cargarlo con LoadModel en main  3) dibujarlo aqui
 		//=====================================================================================
-		glm::vec3 cSF = C_VENOM;	// (posiciones locales mas separadas, como en los otros planetas)
-		// SF-01 base de Andross (domo)
-		model = glm::mat4(1.0);
-		model = glm::translate(model, cSF + glm::vec3(0.0f, 0.0f, 16.8f));
-		model = glm::scale(model, glm::vec3(5.5f, 4.5f, 5.5f));
-		model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));	// el hemisferio es el de abajo, lo volteo
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(0.55f, 0.24f, 0.17f);
-		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		metalTexture.UseTexture();
-		metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		meshListModel[HEMISFERIO]->RenderMeshModel();
-		// SF-06 columnas de roca x6
-		glm::vec2 columna[6] = { glm::vec2(-28, -16.8f), glm::vec2(-11.2f, -25.2f), glm::vec2(11.2f, -28), glm::vec2(28, -14), glm::vec2(-30.8f, 16.8f), glm::vec2(30.8f, 19.6f) };
-		for (int i = 0; i < 6; i++) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, cSF + glm::vec3(columna[i].x, 0.0f, columna[i].y));
-			model = glm::rotate(model, glm::radians(i * 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(2.4f, 7.0f + (i % 3) * 2.0f, 1.8f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.7f, 0.48f, 0.3f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			rocaTexture.UseTexture();
-			roca.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			meshListModel[CILINDRO]->RenderMeshModel();
-		}
-		// SF-02 torres defensivas x3
-		glm::vec2 torreSF[3] = { glm::vec2(-22.4f, 2.8f), glm::vec2(22.4f, 2.8f), glm::vec2(14, 25.2f) };
-		for (int i = 0; i < 3; i++) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, cSF + glm::vec3(torreSF[i].x, 0.0f, torreSF[i].y));
-			model = glm::rotate(model, atan2(-torreSF[i].x, 16.8f - torreSF[i].y), glm::vec3(0.0f, 1.0f, 0.0f));	// apuntan hacia la base
-			model = glm::scale(model, glm::vec3(3.5f, 3.5f, 3.5f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.45f, 0.45f, 0.5f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-			torretaDoble.RenderModel();	// modelo de Kenney (Space Kit, CC0)
-		}
-		plainTexture.UseTexture();
-		// SF-07 contenedores x6
-		for (int i = 0; i < 6; i++) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, cSF + glm::vec3(-17.0f + (i % 3) * 2.0f, 0.5f, i < 3 ? -11.0f : -13.0f));
-			model = glm::scale(model, glm::vec3(1.6f, 1.0f, 1.0f));
-			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(0.25f, 0.36f, 0.24f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			meshListModel[CUBO]->RenderMeshModel();
-		}
-		// pendiente en Venom: SF-03 Arwing (AB4), SF-04 Wolfen II, SF-05 entrada a tuneles, NPCs SF-08 a SF-11,
-		// KF2 en la estacion, audio AMB-SF, SFX6 y SFX7
+		glm::vec3 cSF = C_VENOM;
 
 
 		// ---- postes de las luminarias L1 a L12 (el foco brilla de noche) ----
@@ -1830,7 +1667,7 @@ int main()
 
 
 		//=====================================================================================
-		// 8. AVATAR (pendiente: el equipo va a definir el personaje)
+		// 8. AVATAR (pendiente: el alien lo mandan los demas integrantes)
 		// jerarquico, no humanoide, con textura + material adicional y caminata con A sin(wt + fase)
 		//=====================================================================================
 
@@ -1868,6 +1705,5 @@ int main()
 		mainWindow.swapBuffers();
 	}
 
-	Audio::CerrarTodo();
 	return 0;
 }
