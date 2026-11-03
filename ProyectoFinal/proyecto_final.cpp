@@ -93,6 +93,8 @@ Model torretaWarthog;
 Model marine, inquisidor, grunt, jefe;	// HR-11 a HR-14
 // texturas de Reach (Textures/halo)
 Texture concretoReach, cajaReach, letreroReach, pistaReach, escudoReach;
+// humo y llama del cohete (AB1)
+Texture humoTexture, llamaTexture;
 
 // un skybox por zona: espacio y uno por planeta
 Skybox skyEspacio;
@@ -133,6 +135,8 @@ static const char* fShader = "shaders/shader_light.frag";
 #define BARRICADA 11	// HR-02
 #define ESCUDO 12		// HR-08 / AC4
 #define ATERRIZAJE 13	// HR-09 marca H
+#define HUMO 14			// AB1 bocanada de humo del cohete
+#define LLAMA 15		// AB1 llama del cohete
 
 // la pista: elipse de semiejes 60 y 30 con centro en (0, 12, 22); sube y baja con un seno para que se vea mas futurista
 const float PISTA_A = 84.0f, PISTA_B = 42.0f, PISTA_Z = 31.0f, PISTA_ANCHO = 5.0f;
@@ -399,7 +403,7 @@ void CreateShaders()
 	Shader* shader2 = new Shader();	// [1] menu de teclas (solo textura, sin luces)
 	shader2->CreateFromFiles("shaders/shader_hud.vert", "shaders/shader_hud.frag");
 	shaderList.push_back(*shader2);
-	Shader* shader3 = new Shader();	// [2] efectos transparentes sin luces: escudos de Reach
+	Shader* shader3 = new Shader();	// [2] efectos transparentes sin luces: escudos de Reach, humo y llama del cohete
 	shader3->CreateFromFiles("shaders/shader_efectos.vert", "shaders/shader_efectos.frag");
 	shaderList.push_back(*shader3);
 }
@@ -488,6 +492,32 @@ int main()
 	MeshModel* marca = new MeshModel();
 	marca->CreateMeshModel(marca_vertices.data(), marca_indices.data(), marca_vertices.size(), marca_indices.size());
 	meshListModel.push_back(marca);
+	// 14 humo del cohete: plano vertical de 1 x 1 que usa 1/8 de la textura; los otros cuadros se recorren con el desplazamiento
+	unsigned int humo_indices[] = { 0, 1, 2,	0, 2, 3 };
+	GLfloat humo_vertices[] = {
+		-0.5f, -0.5f, 0.0f,		0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f,		0.125f, 0.0f,	0.0f, 0.0f, 0.0f,
+		 0.5f,  0.5f, 0.0f,		0.125f, 1.0f,	0.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f, 0.0f,		0.0f, 1.0f,		0.0f, 0.0f, 0.0f,
+	};
+	MeshModel* humo = new MeshModel();
+	humo->CreateMeshModel(humo_vertices, humo_indices, 32, 6);
+	meshListModel.push_back(humo);
+	// 15 llama del cohete: dos planos cruzados que cuelgan del origen hacia abajo, cada uno con 1/8 de la textura
+	unsigned int llama_indices[] = { 0, 1, 2,	0, 2, 3,	4, 5, 6,	4, 6, 7 };
+	GLfloat llama_vertices[] = {
+		-0.5f, -1.0f, 0.0f,		0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+		 0.5f, -1.0f, 0.0f,		0.125f, 0.0f,	0.0f, 0.0f, 0.0f,
+		 0.5f,  0.0f, 0.0f,		0.125f, 1.0f,	0.0f, 0.0f, 0.0f,
+		-0.5f,  0.0f, 0.0f,		0.0f, 1.0f,		0.0f, 0.0f, 0.0f,
+		 0.0f, -1.0f, -0.5f,	0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+		 0.0f, -1.0f,  0.5f,	0.125f, 0.0f,	0.0f, 0.0f, 0.0f,
+		 0.0f,  0.0f,  0.5f,	0.125f, 1.0f,	0.0f, 0.0f, 0.0f,
+		 0.0f,  0.0f, -0.5f,	0.0f, 1.0f,		0.0f, 0.0f, 0.0f,
+	};
+	MeshModel* llama = new MeshModel();
+	llama->CreateMeshModel(llama_vertices, llama_indices, 64, 12);
+	meshListModel.push_back(llama);
 	CreateShaders();
 
 	// camara libre: arranca viendo Mundo Forja desde arriba
@@ -555,6 +585,8 @@ int main()
 	letreroReach = Texture("Textures/halo/letrero_unsc.png");	letreroReach.LoadTextureA();
 	pistaReach = Texture("Textures/halo/aterrizaje.png");		pistaReach.LoadTextureA();
 	escudoReach = Texture("Textures/halo/escudo.png");			escudoReach.LoadTextureA();
+	humoTexture = Texture("Textures/humo.png");					humoTexture.LoadTextureA();	// 8 cuadros en fila, de humo denso a casi transparente
+	llamaTexture = Texture("Textures/llama_atlas.png");			llamaTexture.LoadTextureA();	// 8 cuadros de la llama
 
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -646,6 +678,30 @@ int main()
 	float giroAnillo = 0.0f;
 	// AB1 cohete: 0 en la plataforma, 1 cuenta regresiva, 2 sube, 3 va a la estacion, 4 acoplado
 	int faseCohete = 0; float tCohete = 0.0f; glm::vec3 posCohete = PLATAFORMA; float brazoServicio = 0.0f; float inclinaCohete = 0.0f;
+	// el cohete se fragmenta como en la practica 9-2: la etapa 1 se suelta al terminar la subida vertical y la etapa 2 al llegar a la estacion
+	const float escalaCohete = 1.6f;					// el modelo mide 9 de alto (de -4.5 a 4.5), queda de 14.4
+	glm::mat4 cohM(1.0f);								// centro del cohete ya colocado e inclinado (sin escalar)
+	glm::vec3 posCoheteAntes = PLATAFORMA, velCohete(0.0f);	// para sacar su velocidad cuadro a cuadro
+	float temblorCohete = 0.0f;
+	int etapaEncendida = 0;							// 0 primera, 1 segunda, 2 tercera
+	bool sepHecha[2] = { false, false };
+	float sepPivote[2] = { -2.9f, 0.1f };				// centro de cada etapa en el modelo, para girarla
+	glm::vec3 sepPos[2], sepVel[2];
+	float sepInc[2] = { 0.0f, 0.0f }, sepVGiro[2] = { 40.0f, 55.0f };	// inclinacion y grados por segundo de la etapa suelta
+	const float gravedadEtapa = 8.0f;					// la etapa suelta es un tiro libre: solo la gravedad cambia su velocidad
+	// llama: textura animada de 8 cuadros; su base es la tobera de la etapa encendida
+	float toberaEtapa[3] = { -4.5f, -1.0f, 1.25f };		// tobera de cada etapa en el modelo
+	float llamaAncho[3] = { 3.6f, 2.3f, 1.6f }, llamaLargo[3] = { 8.5f, 5.3f, 3.4f };
+	float llamaIgn = 0.0f, llamaLong = 0.0f;			// llamaIgn: 0 apagada, 1 encendida del todo
+	int llamaCuadro = 0;
+	// humo: cada bocanada vive humoVida segundos y cambia de cuadro con su edad
+	const int MAX_HUMO = 300;
+	glm::vec3 humoPos[MAX_HUMO], humoVel[MAX_HUMO];
+	float humoEdad[MAX_HUMO];
+	for (int i = 0; i < MAX_HUMO; i++) humoEdad[i] = 4.0f;	// al empezar no hay humo: todas ya cumplieron su vida
+	float humoVida = 4.0f, humoCada = 0.03f, humoAcum = 0.0f, humoDisp = 0.0f, humoTam = 0.0f;
+	int humoSig = 0, humoCuadro = 0;
+	glm::vec3 tobera(0.0f);
 	// KF1 Ratchet vuela con el Heli-Pack alrededor de la refineria (tecla H): cuadros clave guardados e interpolacion lineal
 	// cada cuadro es la posicion local en Mundo Forja y el giro en Y; entre cuadro y cuadro hay i_max_steps pasos
 	// (las posiciones son desde el pedestal de la figura MF-11, asi el vuelo empieza y termina ahi)
@@ -692,7 +748,7 @@ int main()
 	Model* npcHR[4] = { &marine, &inquisidor, &grunt, &jefe };
 	glm::vec3 posNpcHR[4] = { glm::vec3(-10, 0, -6), glm::vec3(-1.5f, 0, 13), glm::vec3(-1.7f, 0, 17.5f), glm::vec3(-10, 0, -3.5f) };
 	float mitadNpcHR[4] = { 0.9f, 1.2f, 0.625f, 1.075f };	// mitad del alto de cada OBJ (estan centrados, se suben para que pisen el suelo)
-	// efectos (escudos): shader propio con transparencia; sus uniform extra se piden una sola vez
+	// efectos (escudos, humo y llama): shader propio con transparencia; sus uniform extra se piden una sola vez
 	GLint programaEfectos = 0;
 	shaderList[2].UseShader();
 	glGetIntegerv(GL_CURRENT_PROGRAM, &programaEfectos);
@@ -816,9 +872,65 @@ int main()
 			inclinaCohete = -60.0f * sin(u * PI);
 			if (u >= 1.0f) { faseCohete = 4; tCohete = 0.0f; }
 		}
-		else if (faseCohete == 4) {	// acoplado: desaparece y a los 4 s regresa a la plataforma
+		else if (faseCohete == 4) {	// acoplado: la tercera etapa entra a la bahia; a los 6 s (ya cayo la segunda) regresa a la plataforma
 			tCohete += dt;
-			if (tCohete > 4.0f) { faseCohete = 0; posCohete = PLATAFORMA; brazoServicio = 0.0f; inclinaCohete = 0.0f; }
+			if (tCohete > 6.0f) {
+				faseCohete = 0; posCohete = PLATAFORMA; brazoServicio = 0.0f; inclinaCohete = 0.0f;
+				sepHecha[0] = false; sepHecha[1] = false;
+			}
+		}
+		// velocidad del cohete: cuanto avanzo en este cuadro; las etapas sueltas salen con ella
+		if (dt > 0.0f) velCohete = (posCohete - posCoheteAntes) / dt;
+		posCoheteAntes = posCohete;
+		// antes de despegar el motor lo hace temblar
+		temblorCohete = 0.0f;
+		if (faseCohete == 1 && tCohete > 1.0f) temblorCohete = 0.06f * sin(90.0f * now) * (tCohete - 1.0f) / 2.0f;
+		cohM = glm::mat4(1.0);
+		cohM = glm::translate(cohM, posCohete + glm::vec3(temblorCohete, 0.0f, 0.0f));
+		cohM = glm::rotate(cohM, glm::radians(inclinaCohete), glm::vec3(0.0f, 0.0f, 1.0f));
+		cohM = glm::translate(cohM, glm::vec3(0.0f, 4.5f * escalaCohete, 0.0f));	// el modelo esta centrado en su mitad, lo subo para que la base quede en el piso
+		// separacion de etapas: la 1 al terminar la subida vertical, la 2 al llegar a la estacion
+		for (int k = 0; k < 2; k++) {
+			if (!sepHecha[k] && ((k == 0 && faseCohete >= 3) || (k == 1 && faseCohete == 4))) {
+				sepHecha[k] = true;
+				sepPos[k] = glm::vec3(cohM * glm::vec4(0.0f, sepPivote[k] * escalaCohete, 0.0f, 1.0f));	// centro de la etapa en el mundo
+				sepVel[k] = velCohete - 3.0f * glm::vec3(cohM * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f));		// sale con la velocidad del cohete y un empujon hacia atras
+				sepInc[k] = inclinaCohete;
+			}
+			if (sepHecha[k]) {	// ya suelta: tiro libre y da vueltas sobre su centro
+				sepVel[k].y -= gravedadEtapa * dt;
+				sepPos[k] += sepVel[k] * dt;
+				sepInc[k] += sepVGiro[k] * dt;
+			}
+		}
+		etapaEncendida = 0;
+		if (sepHecha[0]) etapaEncendida = 1;
+		if (sepHecha[1]) etapaEncendida = 2;
+		// llama: se enciende en los ultimos 2 s de la cuenta regresiva y se apaga al acoplarse; parpadea un poco
+		llamaIgn = 0.0f;
+		if (faseCohete == 1) llamaIgn = glm::clamp((tCohete - 1.0f) / 1.5f, 0.0f, 1.0f);
+		if (faseCohete == 2 || faseCohete == 3) llamaIgn = 1.0f;
+		llamaLong = llamaLargo[etapaEncendida] * llamaIgn * (1.0f + 0.1f * sin(50.0f * now));
+		llamaCuadro = (int)(now * 24.0f) % 8;
+		// humo: cada humoCada segundos sale una bocanada de la tobera; cerca del suelo se abre hacia los lados
+		tobera = glm::vec3(cohM * glm::vec4(0.0f, toberaEtapa[etapaEncendida] * escalaCohete, 0.0f, 1.0f));
+		if (tobera.y < PLATAFORMA.y + 0.5f) tobera.y = PLATAFORMA.y + 0.5f;
+		if (llamaIgn > 0.0f) humoAcum += dt;
+		while (humoAcum >= humoCada) {
+			humoAcum -= humoCada;
+			humoDisp = posCohete.y < 10.0f ? 6.4f : 1.1f;
+			humoPos[humoSig] = tobera;
+			humoVel[humoSig] = glm::vec3(((rand() % 1000) / 1000.0f - 0.5f) * humoDisp, 0.4f + (rand() % 1000) / 1000.0f, ((rand() % 1000) / 1000.0f - 0.5f) * humoDisp);
+			humoEdad[humoSig] = 0.0f;
+			humoSig = (humoSig + 1) % MAX_HUMO;
+		}
+		// cada bocanada envejece, avanza y se frena un poco; al llegar a humoVida ya no se dibuja
+		for (int i = 0; i < MAX_HUMO; i++) {
+			if (humoEdad[i] < humoVida) {
+				humoEdad[i] += dt;
+				humoPos[i] += humoVel[i] * dt;
+				humoVel[i] *= (1.0f - 0.8f * dt);
+			}
 		}
 		// AB2 torreta
 		if (faseTorreta == 1) {
@@ -1189,20 +1301,36 @@ int main()
 		model = glm::scale(model, glm::vec3(3.8f, 0.4f, 0.4f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		meshListModel[CUBO]->RenderMeshModel();
-		// cohete Saturn V: las tres etapas juntas forman el cohete completo
-		if (faseCohete != 4) {
-			model = glm::mat4(1.0);
-			model = glm::translate(model, posCohete);
-			model = glm::rotate(model, glm::radians(inclinaCohete), glm::vec3(0.0f, 0.0f, 1.0f));
-			model = glm::translate(model, glm::vec3(0.0f, 4.5f * 1.6f, 0.0f));	// el modelo esta centrado en su mitad, lo subo para que la base quede en el piso
-			model = glm::scale(model, glm::vec3(1.6f, 1.6f, 1.6f));
+		// cohete Saturn V: la etapa de arriba siempre va; las de abajo solo mientras no se han soltado
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		if (faseCohete != 4) {	// en la fase 4 la tercera etapa ya entro a la bahia de la estacion
+			model = cohM;
+			model = glm::scale(model, glm::vec3(escalaCohete, escalaCohete, escalaCohete));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = glm::vec3(1.0f, 1.0f, 1.0f);
-			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
 			Etapa3_M.RenderModel();
-			Etapa2_M.RenderModel();
+			if (!sepHecha[1]) Etapa2_M.RenderModel();
+			if (!sepHecha[0]) Etapa1_M.RenderModel();
+		}
+		// etapas sueltas: caen con su posicion y giran sobre su centro hasta llegar al piso
+		if (sepHecha[0] && sepPos[0].y > 1.0f) {
+			model = glm::mat4(1.0);
+			model = glm::translate(model, sepPos[0]);
+			model = glm::rotate(model, glm::radians(sepInc[0]), glm::vec3(0.0f, 0.0f, 1.0f));
+			model = glm::scale(model, glm::vec3(escalaCohete, escalaCohete, escalaCohete));
+			model = glm::translate(model, glm::vec3(0.0f, -sepPivote[0], 0.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			Etapa1_M.RenderModel();
+		}
+		if (sepHecha[1] && sepPos[1].y > 1.0f) {
+			model = glm::mat4(1.0);
+			model = glm::translate(model, sepPos[1]);
+			model = glm::rotate(model, glm::radians(sepInc[1]), glm::vec3(0.0f, 0.0f, 1.0f));
+			model = glm::scale(model, glm::vec3(escalaCohete, escalaCohete, escalaCohete));
+			model = glm::translate(model, glm::vec3(0.0f, -sepPivote[1], 0.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			Etapa2_M.RenderModel();
 		}
 
 		// ---- CE1 a CE5 cuerpos celestes: planeta gaseoso con anillo, luna de hielo, planeta de lava, planeta alien y una luna de roca ----
@@ -2065,7 +2193,7 @@ int main()
 
 
 		//=====================================================================================
-		// EFECTOS TRANSPARENTES (escudos de Reach): van al final y no escriben profundidad,
+		// EFECTOS TRANSPARENTES (escudos de Reach, humo y llama del cohete): van al final y no escriben profundidad,
 		// asi se ve lo de atras y no tapan a lo que se dibuje despues
 		//=====================================================================================
 		shaderList[2].UseShader();
@@ -2087,6 +2215,40 @@ int main()
 			model = glm::scale(model, glm::vec3(2.1f, 2.3f, 1.0f));
 			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 			meshListModel[ESCUDO]->RenderMeshModel();
+		}
+		// ---- AB1 humo del cohete: cada bocanada es un plano que mira a la camara; su cuadro depende de su edad ----
+		glUniform1f(uniformAlphaEfecto, 1.0f);
+		color = esDeNoche ? glm::vec3(0.45f, 0.45f, 0.5f) : glm::vec3(1.0f, 1.0f, 1.0f);	// de noche el humo se ve oscuro
+		glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+		humoTexture.UseTexture();
+		for (int i = 0; i < MAX_HUMO; i++) {
+			if (humoEdad[i] < humoVida) {
+				humoCuadro = (int)(humoEdad[i] / humoVida * 8.0f);
+				if (humoCuadro > 7) humoCuadro = 7;
+				offsetEfecto = glm::vec2(humoCuadro / 8.0f, 0.0f);
+				glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
+				humoTam = 1.4f + 4.3f * humoEdad[i] / humoVida;	// crece mientras se dispersa
+				model = glm::mat4(1.0);
+				model = glm::translate(model, humoPos[i]);
+				model = glm::rotate(model, atan2(camPos.x - humoPos[i].x, camPos.z - humoPos[i].z), glm::vec3(0.0f, 1.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(humoTam, humoTam, humoTam));
+				glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+				meshListModel[HUMO]->RenderMeshModel();
+			}
+		}
+		// ---- AB1 llama del cohete: textura animada de 8 cuadros que se suma a lo de atras (blending aditivo) ----
+		if (llamaIgn > 0.0f && faseCohete != 4) {
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			offsetEfecto = glm::vec2(llamaCuadro / 8.0f, 0.0f);
+			glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
+			color = glm::vec3(1.6f, 1.6f, 1.6f);
+			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+			model = cohM;
+			model = glm::translate(model, glm::vec3(0.0f, toberaEtapa[etapaEncendida] * escalaCohete, 0.0f));
+			model = glm::scale(model, glm::vec3(llamaAncho[etapaEncendida], llamaLong, llamaAncho[etapaEncendida]));
+			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			llamaTexture.UseTexture();
+			meshListModel[LLAMA]->RenderMeshModel();
 		}
 		offsetEfecto = glm::vec2(0.0f, 0.0f);
 		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
