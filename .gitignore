@@ -11,3 +11,7 @@ Release/
 # modelos de Ratchet & Clank (van en el Drive, no en el repo)
 ProyectoFinal/Models/rc/
 ProyectoFinal/Textures/rc_*
+
+# modelos y texturas de Halo (Reach) que se extrajeron de los juegos (van en el Drive, no en el repo)
+ProyectoFinal/Models/halo/
+ProyectoFinal/Textures/halo/

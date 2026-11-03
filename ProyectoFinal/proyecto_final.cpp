@@ -12,7 +12,7 @@ Secciones del main (cada quien trabaja en la suya y en su rama):
 
 Teclas que ya funcionan: 1-4 camaras, WASD + mouse en la camara libre, T viajar al siguiente planeta,
 R cohete (AB1), G torreta (AB2), H Ratchet vuela con el Heli-Pack (KF1), L reflector S1, K luces de la estacion S2,
-X acelera el ciclo de dia (solo pruebas)
+P despega el Pelican de Reach (AB3), O patrulla del Warthog, J pluma del puesto de control, X acelera el ciclo de dia (solo pruebas)
 */
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -85,6 +85,14 @@ Model tornilloModelo;	// MF-04
 Model tornilloOro;		// tornillo de oro flotando en el centro de Mundo Forja
 Model naveRatchet;		// la Aphelion, estacionada junto al planeta
 Model Etapa1_M, Etapa2_M, Etapa3_M;	// cohete Saturn V en tres etapas; juntas forman el cohete completo (AB1)
+// modelos de Halo para Reach (The Models Resource, ver Models/halo/FUENTES.txt), en Models/halo
+Model pelican;			// HR-06 y AB3 en la zona de aterrizaje, y la nave viajera NV
+Model warthog;			// HR-05 chasis (padre de las ruedas y la torreta)
+Model ruedasWarthog[4];
+Model torretaWarthog;
+Model marine, inquisidor, grunt, jefe;	// HR-11 a HR-14
+// texturas de Reach (Textures/halo)
+Texture concretoReach, cajaReach, letreroReach, pistaReach, escudoReach;
 
 // un skybox por zona: espacio y uno por planeta
 Skybox skyEspacio;
@@ -122,6 +130,9 @@ static const char* fShader = "shaders/shader_light.frag";
 #define MURO_PISTA 8
 #define CUADRO 9
 #define ANILLO 10
+#define BARRICADA 11	// HR-02
+#define ESCUDO 12		// HR-08 / AC4
+#define ATERRIZAJE 13	// HR-09 marca H
 
 // la pista: elipse de semiejes 60 y 30 con centro en (0, 12, 22); sube y baja con un seno para que se vea mas futurista
 const float PISTA_A = 84.0f, PISTA_B = 42.0f, PISTA_Z = 31.0f, PISTA_ANCHO = 5.0f;
@@ -380,14 +391,17 @@ void CrearCuadro()
 void CreateShaders()
 {
 	// ojo: el vector guarda copias y si crece las vuelve a copiar; el destructor de Shader borra el programa de OpenGL,
-	// asi que reservo lugar para los dos desde antes (si no, el shader de luces quedaba borrado y la escena salia negra)
-	shaderList.reserve(2);
+	// asi que reservo lugar para todos desde antes (si no, el shader de luces quedaba borrado y la escena salia negra)
+	shaderList.reserve(3);
 	Shader* shader1 = new Shader();
 	shader1->CreateFromFiles(vShader, fShader);
 	shaderList.push_back(*shader1);
 	Shader* shader2 = new Shader();	// [1] menu de teclas (solo textura, sin luces)
 	shader2->CreateFromFiles("shaders/shader_hud.vert", "shaders/shader_hud.frag");
 	shaderList.push_back(*shader2);
+	Shader* shader3 = new Shader();	// [2] efectos transparentes sin luces: escudos de Reach
+	shader3->CreateFromFiles("shaders/shader_efectos.vert", "shaders/shader_efectos.frag");
+	shaderList.push_back(*shader3);
 }
 
 
@@ -406,6 +420,74 @@ int main()
 	CrearMuroPista();		// 8
 	CrearCuadro();			// 9
 	CrearAnillo();			// 10
+	// 11 barricada de Reach: el mismo cubo de lado 1, con la cara de arriba angosta en z (de 1 a 0.4) para que los lados queden inclinados
+	unsigned int barricada_indices[] = {
+		0, 1, 2,	2, 3, 0,
+		4, 5, 6,	6, 7, 4,
+		8, 9, 10,	10, 11, 8,
+		12, 13, 14,	14, 15, 12,
+		16, 17, 18,	18, 19, 16,
+		20, 21, 22,	22, 23, 20,
+	};
+	GLfloat barricada_vertices[] = {
+		//x		y		z		S		T		NX		NY		NZ
+		// frente (+z), inclinado
+		-0.5f, -0.5f,  0.5f,	0.0f, 0.0f,		0.0f,	-0.287f,	-1.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 0.0f,		0.0f,	-0.287f,	-1.0f,
+		 0.5f,  0.5f,  0.2f,	1.0f, 1.0f,		0.0f,	-0.287f,	-1.0f,
+		-0.5f,  0.5f,  0.2f,	0.0f, 1.0f,		0.0f,	-0.287f,	-1.0f,
+		// derecha (+x)
+		 0.5f, -0.5f,  0.5f,	0.0f, 0.0f,		-1.0f,	0.0f,	0.0f,
+		 0.5f, -0.5f, -0.5f,	1.0f, 0.0f,		-1.0f,	0.0f,	0.0f,
+		 0.5f,  0.5f, -0.2f,	1.0f, 1.0f,		-1.0f,	0.0f,	0.0f,
+		 0.5f,  0.5f,  0.2f,	0.0f, 1.0f,		-1.0f,	0.0f,	0.0f,
+		// atras (-z), inclinado
+		 0.5f, -0.5f, -0.5f,	0.0f, 0.0f,		0.0f,	-0.287f,	1.0f,
+		-0.5f, -0.5f, -0.5f,	1.0f, 0.0f,		0.0f,	-0.287f,	1.0f,
+		-0.5f,  0.5f, -0.2f,	1.0f, 1.0f,		0.0f,	-0.287f,	1.0f,
+		 0.5f,  0.5f, -0.2f,	0.0f, 1.0f,		0.0f,	-0.287f,	1.0f,
+		// izquierda (-x)
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,		1.0f,	0.0f,	0.0f,
+		-0.5f, -0.5f,  0.5f,	1.0f, 0.0f,		1.0f,	0.0f,	0.0f,
+		-0.5f,  0.5f,  0.2f,	1.0f, 1.0f,		1.0f,	0.0f,	0.0f,
+		-0.5f,  0.5f, -0.2f,	0.0f, 1.0f,		1.0f,	0.0f,	0.0f,
+		// abajo (-y)
+		-0.5f, -0.5f, -0.5f,	0.0f, 0.0f,		0.0f,	1.0f,	0.0f,
+		 0.5f, -0.5f, -0.5f,	1.0f, 0.0f,		0.0f,	1.0f,	0.0f,
+		 0.5f, -0.5f,  0.5f,	1.0f, 1.0f,		0.0f,	1.0f,	0.0f,
+		-0.5f, -0.5f,  0.5f,	0.0f, 1.0f,		0.0f,	1.0f,	0.0f,
+		// arriba (+y), angosta
+		-0.5f,  0.5f,  0.2f,	0.0f, 0.0f,		0.0f,	-1.0f,	0.0f,
+		 0.5f,  0.5f,  0.2f,	1.0f, 0.0f,		0.0f,	-1.0f,	0.0f,
+		 0.5f,  0.5f, -0.2f,	1.0f, 1.0f,		0.0f,	-1.0f,	0.0f,
+		-0.5f,  0.5f, -0.2f,	0.0f, 1.0f,		0.0f,	-1.0f,	0.0f,
+	};
+	MeshModel* barricada = new MeshModel();
+	barricada->CreateMeshModel(barricada_vertices, barricada_indices, 192, 36);
+	meshListModel.push_back(barricada);
+	// 12 escudo de Reach: plano vertical de 1 x 1 con la base en y = 0
+	GLfloat escudo_vertices[] = {
+		-0.5f, 0.0f, 0.0f,	0.0f, 0.0f,	0.0f, 0.0f, -1.0f,
+		 0.5f, 0.0f, 0.0f,	1.0f, 0.0f,	0.0f, 0.0f, -1.0f,
+		 0.5f, 1.0f, 0.0f,	1.0f, 1.0f,	0.0f, 0.0f, -1.0f,
+		-0.5f, 1.0f, 0.0f,	0.0f, 1.0f,	0.0f, 0.0f, -1.0f,
+	};
+	unsigned int escudo_indices[] = { 0, 1, 2,	2, 3, 0 };
+	MeshModel* escudo = new MeshModel();
+	escudo->CreateMeshModel(escudo_vertices, escudo_indices, 32, 6);
+	meshListModel.push_back(escudo);
+	// 13 marca de aterrizaje de Reach: disco de radio 1 con la textura una sola vez (u, v de 0 a 1)
+	std::vector<GLfloat> marca_vertices;
+	std::vector<unsigned int> marca_indices;
+	marca_vertices.insert(marca_vertices.end(), { 0.0f, 0.0f, 0.0f,	0.5f, 0.5f,	0.0f, -1.0f, 0.0f });
+	for (int i = 0; i <= 64; i++) {
+		float a = 2.0f * PI * i / 64;
+		marca_vertices.insert(marca_vertices.end(), { cos(a), 0.0f, sin(a),	0.5f + 0.5f * cos(a), 0.5f + 0.5f * sin(a),	0.0f, -1.0f, 0.0f });
+	}
+	for (int i = 0; i < 64; i++) { marca_indices.push_back(0); marca_indices.push_back(1 + i); marca_indices.push_back(2 + i); }
+	MeshModel* marca = new MeshModel();
+	marca->CreateMeshModel(marca_vertices.data(), marca_indices.data(), marca_vertices.size(), marca_indices.size());
+	meshListModel.push_back(marca);
 	CreateShaders();
 
 	// camara libre: arranca viendo Mundo Forja desde arriba
@@ -456,6 +538,23 @@ int main()
 	Etapa1_M = Model();		Etapa1_M.LoadModel("Models/Cohete/Etapa1.obj");	// sus texturas las lee de saturn_v.mtl
 	Etapa2_M = Model();		Etapa2_M.LoadModel("Models/Cohete/Etapa2.obj");
 	Etapa3_M = Model();		Etapa3_M.LoadModel("Models/Cohete/Etapa3.obj");
+	// Reach: los OBJ estan centrados en el origen; sus texturas las leen de Textures/halo por el .mtl
+	pelican = Model();			pelican.LoadModel("Models/halo/pelican.obj");
+	warthog = Model();			warthog.LoadModel("Models/halo/warthog_chasis.obj");
+	ruedasWarthog[0] = Model();	ruedasWarthog[0].LoadModel("Models/halo/warthog_rueda_0.obj");
+	ruedasWarthog[1] = Model();	ruedasWarthog[1].LoadModel("Models/halo/warthog_rueda_1.obj");
+	ruedasWarthog[2] = Model();	ruedasWarthog[2].LoadModel("Models/halo/warthog_rueda_2.obj");
+	ruedasWarthog[3] = Model();	ruedasWarthog[3].LoadModel("Models/halo/warthog_rueda_3.obj");
+	torretaWarthog = Model();	torretaWarthog.LoadModel("Models/halo/warthog_torreta.obj");
+	marine = Model();			marine.LoadModel("Models/halo/marine.obj");
+	inquisidor = Model();		inquisidor.LoadModel("Models/halo/inquisidor.obj");
+	grunt = Model();			grunt.LoadModel("Models/halo/grunt.obj");
+	jefe = Model();				jefe.LoadModel("Models/halo/jefe.obj");
+	concretoReach = Texture("Textures/halo/concreto.png");		concretoReach.LoadTextureA();
+	cajaReach = Texture("Textures/halo/caja_unsc.png");			cajaReach.LoadTextureA();
+	letreroReach = Texture("Textures/halo/letrero_unsc.png");	letreroReach.LoadTextureA();
+	pistaReach = Texture("Textures/halo/aterrizaje.png");		pistaReach.LoadTextureA();
+	escudoReach = Texture("Textures/halo/escudo.png");			escudoReach.LoadTextureA();
 
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -481,7 +580,7 @@ int main()
 	// luminarias: 4 postes por planeta, solo de noche (L1 a L12; antes eran 6, dos por planeta, como en la tabla 1.13.1)
 	glm::vec3 posLuminaria[12] = {
 		C_FORJA + glm::vec3(-20, 0, -20), C_FORJA + glm::vec3(20, 0, -17), C_FORJA + glm::vec3(-36, 0, 10), C_FORJA + glm::vec3(18, 0, 26),
-		C_REACH + glm::vec3(-20, 0, -22), C_REACH + glm::vec3(20, 0, -20), C_REACH + glm::vec3(-24, 0, 18), C_REACH + glm::vec3(22, 0, 20),
+		C_REACH + glm::vec3(-31, 0, -34), C_REACH + glm::vec3(22, 0, -25), C_REACH + glm::vec3(-39, 0, 3), C_REACH + glm::vec3(22, 0, 28),	// entre los objetos de Reach ya separados
 		C_VENOM + glm::vec3(-20, 0, -14), C_VENOM + glm::vec3(20, 0, -14), C_VENOM + glm::vec3(-24, 0, 16), C_VENOM + glm::vec3(24, 0, 18) };
 	glm::vec3 colorLuminaria[3] = { glm::vec3(1.0f, 0.8f, 0.4f), glm::vec3(0.8f, 0.9f, 1.0f), glm::vec3(0.3f, 1.0f, 0.3f) };	// forja amarillo, reach blanco azulado, venom verde
 	PointLight luminarias[12];
@@ -494,8 +593,8 @@ int main()
 	glm::vec3 posAmbiente[N_AMBIENTE] = {
 		C_FORJA + glm::vec3(24, 6, 1),		// horno de la refineria
 		C_FORJA + glm::vec3(-6, 4, 3),		// vendedor Gadgetron
-		C_REACH + glm::vec3(-8, 6, -11),	// hangar
-		C_REACH + glm::vec3(20, 3, 8),		// zona de aterrizaje
+		C_REACH + glm::vec3(-14, 6, -16),	// frente del cuartel
+		C_REACH + glm::vec3(34, 3, 14),		// zona de aterrizaje
 		C_VENOM + glm::vec3(0, 7, 17),		// base de Andross
 		C_VENOM + glm::vec3(-14, 4, -2),	// torres
 		glm::vec3(PISTA_A, 20.0f, PISTA_Z), glm::vec3(-PISTA_A, 20.0f, PISTA_Z), glm::vec3(0.0f, 20.0f, PISTA_Z + PISTA_B), glm::vec3(0.0f, 20.0f, PISTA_Z - PISTA_B) };	// 4 de la pista
@@ -566,6 +665,42 @@ int main()
 	bool menuAbierto = true, teclaM = false;	// el menu de teclas arranca abierto; M lo cierra y lo abre
 	// (por ahora se usa la camara libre en lugar del avatar; cuando este el avatar se cambia camPos por su posicion)
 	float tornilloOculto[12] = { 0 };	// segundos que le faltan al tornillo para reaparecer
+	// Reach: el plano del integrante se hizo en unidades de 1; aqui se multiplica por escalaReach para llenar el planeta
+	const float escalaReach = 2.8f;
+	glm::mat4 mundoReach(1.0f), antenaHR(1.0f), chasisHR(1.0f), macHR(1.0f);
+	float anguloMAC = 0.0f;
+	// AB3 Pelican: P inicia el ciclo (sube 3 s, espera 2 s, baja 3 s); mientras dura se ignoran nuevas pulsaciones
+	bool pelicanActivo = false;
+	float tiempoPelican = 0.0f, alturaPelican = 0.0f;
+	// posiciones del plano ya separadas (unas 1.7 veces mas lejos del centro que en el plano original) para llenar el planeta
+	glm::vec2 barricadasHR[4] = { glm::vec2(-13.6f, -5.1f), glm::vec2(-13.6f, 5.1f), glm::vec2(0.0f, 5.1f), glm::vec2(5.1f, -3.4f) };
+	glm::vec2 pinosHR[14] = { glm::vec2(-15.3f, -15.3f), glm::vec2(-8.5f, -18.7f), glm::vec2(8.5f, -17.0f), glm::vec2(17.0f, -11.9f), glm::vec2(-17.0f, 11.9f), glm::vec2(11.9f, 17.0f),
+		glm::vec2(21, -2), glm::vec2(-21, -2), glm::vec2(4, 23), glm::vec2(-8, 21), glm::vec2(19, 13), glm::vec2(14, -21), glm::vec2(-19, -11), glm::vec2(0, -23) };
+	glm::vec2 rocasHR[8] = { glm::vec2(-20.4f, -6.8f), glm::vec2(-20.4f, 1.7f), glm::vec2(18.7f, 6.8f), glm::vec2(1.7f, 20.4f),
+		glm::vec2(10, -24), glm::vec2(-12, -22), glm::vec2(24, 4), glm::vec2(-24, 10) };
+	glm::vec2 escudosHR[2] = { glm::vec2(3.4f, -8.5f), glm::vec2(5.1f, 11.9f) };
+	// tecla O: el Warthog patrulla en un circulo; al soltarse queda donde iba. Las ruedas giran lo que avanza entre su radio
+	glm::vec2 centroPatrulla = glm::vec2(-9.0f, 10.0f);
+	const float radioPatrulla = 4.0f, radioRueda = 0.42f;
+	float anguloWarthog = 0.0f, giroRuedas = 0.0f, giroTorretaW = 0.0f;
+	// tecla J: pluma del puesto de control; sube hasta 80 grados y baja a 0, poco a poco
+	float anguloPluma = 0.0f;
+	// pivotes de las ruedas y de la torreta medidos desde el centro del chasis (el OBJ del chasis esta centrado; su centro original estaba en y = 1.06914)
+	glm::vec3 pivoteRueda[4] = { glm::vec3(-0.81005f, 0.41767f - 1.06914f, -1.37820f), glm::vec3(-0.81005f, 0.41767f - 1.06914f, 1.33663f),
+		glm::vec3(0.81005f, 0.41767f - 1.06914f, -1.37820f), glm::vec3(0.81005f, 0.41767f - 1.06914f, 1.33663f) };
+	glm::vec3 pivoteTorreta = glm::vec3(0.0f, 1.52451f - 1.06914f, 0.03261f);
+	Model* npcHR[4] = { &marine, &inquisidor, &grunt, &jefe };
+	glm::vec3 posNpcHR[4] = { glm::vec3(-10, 0, -6), glm::vec3(-1.5f, 0, 13), glm::vec3(-1.7f, 0, 17.5f), glm::vec3(-10, 0, -3.5f) };
+	float mitadNpcHR[4] = { 0.9f, 1.2f, 0.625f, 1.075f };	// mitad del alto de cada OBJ (estan centrados, se suben para que pisen el suelo)
+	// efectos (escudos): shader propio con transparencia; sus uniform extra se piden una sola vez
+	GLint programaEfectos = 0;
+	shaderList[2].UseShader();
+	glGetIntegerv(GL_CURRENT_PROGRAM, &programaEfectos);
+	GLint uniformAlphaEfecto = glGetUniformLocation(programaEfectos, "alphaEfecto");
+	GLint uniformColorEfecto = glGetUniformLocation(programaEfectos, "colorEfecto");
+	GLint uniformOffsetEfecto = glGetUniformLocation(programaEfectos, "offsetEfecto");
+	glm::vec2 offsetEfecto(0.0f);
+	glUseProgram(0);
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		uniformSpecularIntensity = 0, uniformShininess = 0;
@@ -584,6 +719,25 @@ int main()
 
 		glfwPollEvents();
 		bool* teclas = mainWindow.getsKeys();
+
+		// AB3: P (se guarda en Window) arranca el despegue del Pelican; sube, espera arriba y aterriza
+		if (mainWindow.getPelicanPresionado() && !pelicanActivo) { pelicanActivo = true; tiempoPelican = 0.0f; }
+		if (pelicanActivo) {
+			tiempoPelican += dt;
+			if (tiempoPelican < 3.0f) alturaPelican = 2.0f * tiempoPelican;
+			else if (tiempoPelican < 5.0f) alturaPelican = 6.0f;
+			else if (tiempoPelican < 8.0f) alturaPelican = 6.0f - 2.0f * (tiempoPelican - 5.0f);
+			else { alturaPelican = 0.0f; pelicanActivo = false; }
+		}
+		// O (se guarda en Window): mientras patrulla, el Warthog avanza 0.5 rad/s sobre su circulo y la torreta vigila de lado a lado
+		if (mainWindow.getwarthogAndando()) {
+			anguloWarthog += 0.5f * dt;
+			giroRuedas += glm::degrees(radioPatrulla * 0.5f * dt / radioRueda);	// lo que avanza entre el radio de la rueda
+			giroTorretaW = 35.0f * sin(1.5f * now);
+		}
+		// J (se guarda en Window): la pluma sube o baja 60 grados por segundo hasta su tope
+		if (mainWindow.getplumaArriba()) anguloPluma = glm::min(anguloPluma + 60.0f * dt, 80.0f);
+		else anguloPluma = glm::max(anguloPluma - 60.0f * dt, 0.0f);
 
 		// ---------------- teclas de un solo golpe ----------------
 		if (teclas[GLFW_KEY_L] && !teclaL) s1Prendido = !s1Prendido;	teclaL = teclas[GLFW_KEY_L];
@@ -1135,24 +1289,16 @@ int main()
 			meteoro.RenderModel();
 		}
 
-		// ---- NV nave viajera (Pelican provisional) ----
+		// ---- NV nave viajera (Pelican de Halo) ----
 		model = glm::mat4(1.0);
 		model = glm::translate(model, posNV);
 		model = glm::rotate(model, atan2(tanNV.x, tanNV.z), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
-		modelaux = model;
-		model = glm::scale(model, glm::vec3(1.4f, 1.2f, 4.0f));
+		model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		color = glm::vec3(0.42f, 0.5f, 0.28f);	// verde olivo UNSC
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
 		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-		plainTexture.UseTexture();
-		metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		meshListModel[CUBO]->RenderMeshModel();
-		model = modelaux;
-		model = glm::translate(model, glm::vec3(0.0f, 0.2f, -0.8f));
-		model = glm::scale(model, glm::vec3(5.0f, 0.2f, 1.2f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		meshListModel[CUBO]->RenderMeshModel();
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		pelican.RenderModel();
 
 
 		//=====================================================================================
@@ -1633,6 +1779,252 @@ int main()
 		// pasos: 1) declarar el Model junto a los demas  2) cargarlo con LoadModel en main  3) dibujarlo aqui
 		//=====================================================================================
 		glm::vec3 cHR = C_REACH;
+		// todo Reach cuelga de mundoReach: centro del planeta y escala del plano (las posiciones de abajo son las del plano)
+		mundoReach = glm::mat4(1.0);
+		mundoReach = glm::translate(mundoReach, cHR);
+		mundoReach = glm::scale(mundoReach, glm::vec3(escalaReach, escalaReach, escalaReach));
+		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		// HR-01 base de 6 x 3 x 4 con techo, puerta, letrero UNSC y dos paneles al frente
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-5.0f, 1.5f, -8.0f));
+		model = glm::scale(model, glm::vec3(6.0f, 3.0f, 4.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.85f, 0.85f, 0.85f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		concretoReach.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-5.0f, 3.1f, -8.0f));
+		model = glm::scale(model, glm::vec3(6.3f, 0.2f, 4.3f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.45f, 0.45f, 0.45f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalTexture.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-5.0f, 1.1f, -5.98f));
+		model = glm::scale(model, glm::vec3(1.8f, 2.2f, 0.04f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.2f, 0.25f, 0.22f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		meshListModel[CUBO]->RenderMeshModel();
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-5.0f, 2.65f, -5.95f));
+		model = glm::scale(model, glm::vec3(2.5f, 0.45f, 0.04f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		letreroReach.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		for (int i = 0; i < 2; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(-7.0f + i * 4.0f, 1.8f, -5.95f));
+			model = glm::scale(model, glm::vec3(1.0f, 0.55f, 0.05f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.2f, 0.45f, 0.55f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			plainTexture.UseTexture();
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+		// HR-02 cuatro barricadas de perfil inclinado
+		for (int i = 0; i < 4; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(barricadasHR[i].x, 0.45f, barricadasHR[i].y));
+			model = glm::scale(model, glm::vec3(2.0f, 0.9f, 0.65f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.8f, 0.8f, 0.8f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			concretoReach.UseTexture();
+			meshListModel[BARRICADA]->RenderMeshModel();
+		}
+		// HR-03 torre de comunicaciones y AC3 antena hija que gira sobre Y
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-3.0f, 2.5f, -17.0f));
+		model = glm::scale(model, glm::vec3(1.4f, 5.0f, 1.4f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.7f, 0.7f, 0.7f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		concretoReach.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		antenaHR = mundoReach;
+		antenaHR = glm::translate(antenaHR, glm::vec3(-3.0f, 5.0f, -17.0f));
+		antenaHR = glm::rotate(antenaHR, glm::radians(now * 20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = antenaHR;
+		model = glm::translate(model, glm::vec3(0.0f, 0.8f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.12f, 1.6f, 0.12f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.8f, 0.8f, 0.8f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalTexture.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		model = antenaHR;
+		model = glm::translate(model, glm::vec3(0.0f, 1.3f, 0.0f));
+		model = glm::scale(model, glm::vec3(2.3f, 0.12f, 0.15f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		meshListModel[CUBO]->RenderMeshModel();
+		// HR-04 catorce pinos (tronco cilindro + copa cono) y ocho rocas achatadas, repartidos hasta la orilla
+		roca.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 14; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(pinosHR[i].x, 0.0f, pinosHR[i].y));
+			model = glm::scale(model, glm::vec3(0.4f, 1.5f, 0.4f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.4f, 0.28f, 0.16f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			plainTexture.UseTexture();
+			meshListModel[CILINDRO]->RenderMeshModel();
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(pinosHR[i].x, 1.2f, pinosHR[i].y));
+			model = glm::scale(model, glm::vec3(2.4f, 4.5f, 2.4f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.18f, 0.42f, 0.24f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CONO]->RenderMeshModel();
+		}
+		for (int i = 0; i < 8; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(rocasHR[i].x, 0.35f, rocasHR[i].y));
+			model = glm::scale(model, glm::vec3(1.3f, 0.8f, 1.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.65f, 0.65f, 0.65f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			rocaTexture.UseTexture();
+			meshListModel[ESFERA]->RenderMeshModel();
+		}
+		// HR-05 Warthog: el chasis es padre de las cuatro ruedas y de la torreta; con O patrulla sobre un circulo
+		chasisHR = mundoReach;
+		chasisHR = glm::translate(chasisHR, glm::vec3(centroPatrulla.x + radioPatrulla * cos(anguloWarthog), 1.06914f, centroPatrulla.y + radioPatrulla * sin(anguloWarthog)));	// se sube la mitad del chasis para que las llantas pisen el suelo
+		chasisHR = glm::rotate(chasisHR, -anguloWarthog, glm::vec3(0.0f, 1.0f, 0.0f));	// su frente (+z) va en la direccion del circulo
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(chasisHR));
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		warthog.RenderModel();
+		for (int i = 0; i < 4; i++) {
+			model = chasisHR;
+			model = glm::translate(model, pivoteRueda[i]);
+			model = glm::rotate(model, glm::radians(giroRuedas), glm::vec3(1.0f, 0.0f, 0.0f));	// la rueda gira sobre su eje (x)
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			ruedasWarthog[i].RenderModel();
+		}
+		model = chasisHR;
+		model = glm::translate(model, pivoteTorreta);
+		model = glm::rotate(model, glm::radians(giroTorretaW), glm::vec3(0.0f, 1.0f, 0.0f));	// vigila de lado a lado mientras patrulla
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		torretaWarthog.RenderModel();
+		// HR-09 marca H de la zona de aterrizaje (disco de radio 3)
+		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(12.0f, 0.03f, 5.0f));
+		model = glm::scale(model, glm::vec3(3.0f, 1.0f, 3.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		pistaReach.UseTexture();
+		meshListModel[ATERRIZAJE]->RenderMeshModel();
+		// HR-06 / AB3 Pelican sobre la marca H; con P sube, espera y aterriza
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(12.0f, 0.08f + 1.01369f + alturaPelican / escalaReach, 5.0f));	// 1.01369 = mitad del alto del Pelican
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		pelican.RenderModel();
+		// HR-07 seis cajas UNSC en dos filas frente al cuartel
+		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 6; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(-7.0f + (i % 3) * 2.0f, 0.5f, i < 3 ? -4.2f : -2.6f));
+			model = glm::scale(model, glm::vec3(0.95f, 1.0f, 0.85f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.0f, 1.0f, 1.0f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			cajaReach.UseTexture();
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+		// HR-10 / AC5 dos plataformas MAC en orbita, una vuelta cada 120 segundos
+		metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		metalTexture.UseTexture();
+		for (int i = 0; i < 2; i++) {
+			anguloMAC = now * 2.0f * PI / 120.0f + i * PI;
+			macHR = mundoReach;
+			macHR = glm::translate(macHR, glm::vec3(19.0f * cos(anguloMAC), 18.0f, 19.0f * sin(anguloMAC)));
+			macHR = glm::rotate(macHR, -anguloMAC, glm::vec3(0.0f, 1.0f, 0.0f));
+			model = macHR;
+			model = glm::scale(model, glm::vec3(1.2f, 0.8f, 4.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.45f, 0.45f, 0.45f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+			model = macHR;
+			model = glm::translate(model, glm::vec3(0.0f, 0.0f, 3.0f));	// canon
+			model = glm::scale(model, glm::vec3(0.4f, 0.4f, 3.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.7f, 0.7f, 0.7f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+			model = macHR;
+			model = glm::translate(model, glm::vec3(-1.1f, 0.0f, -1.0f));	// ala izquierda
+			model = glm::scale(model, glm::vec3(1.0f, 0.3f, 1.7f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.3f, 0.3f, 0.3f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+			model = macHR;
+			model = glm::translate(model, glm::vec3(1.1f, 0.0f, -1.0f));	// ala derecha
+			model = glm::scale(model, glm::vec3(1.0f, 0.3f, 1.7f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+		// HR-11 a HR-14 marine, Inquisidor, grunt y Jefe Maestro (figuras quietas)
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 4; i++) {
+			model = mundoReach;
+			model = glm::translate(model, posNpcHR[i] + glm::vec3(0.0f, mitadNpcHR[i], 0.0f));
+			model = glm::rotate(model, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.0f, 1.0f, 1.0f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			npcHR[i]->RenderModel();
+		}
+		// puesto de control: poste con la pluma (rayas rojas y blancas) que sube y baja con J; el apoyo recibe la punta
+		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(2.0f, 0.6f, -1.0f));
+		model = glm::scale(model, glm::vec3(0.35f, 1.2f, 0.35f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.75f, 0.7f, 0.2f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		plainTexture.UseTexture();
+		meshListModel[CUBO]->RenderMeshModel();
+		model = mundoReach;
+		model = glm::translate(model, glm::vec3(-2.3f, 0.45f, -1.0f));
+		model = glm::scale(model, glm::vec3(0.2f, 0.9f, 0.2f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		meshListModel[CUBO]->RenderMeshModel();
+		for (int i = 0; i < 4; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(2.0f, 1.1f, -1.0f));	// bisagra arriba del poste
+			model = glm::rotate(model, glm::radians(-anguloPluma), glm::vec3(0.0f, 0.0f, 1.0f));	// negativo: la punta (-x) sube
+			model = glm::translate(model, glm::vec3(-0.5f - i * 1.0f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(1.0f, 0.15f, 0.15f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = i % 2 == 0 ? glm::vec3(0.85f, 0.1f, 0.1f) : glm::vec3(0.95f, 0.95f, 0.95f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+		// HR-08 soportes de los escudos (el plano transparente de AC4 se dibuja al final del cuadro)
+		metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 2; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(escudosHR[i].x, 0.1f, escudosHR[i].y));
+			model = glm::scale(model, glm::vec3(2.4f, 0.2f, 0.7f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.35f, 0.35f, 0.35f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			metalTexture.UseTexture();
+			meshListModel[CUBO]->RenderMeshModel();
+		}
 
 
 		//=====================================================================================
@@ -1673,6 +2065,36 @@ int main()
 
 
 		//=====================================================================================
+		// EFECTOS TRANSPARENTES (escudos de Reach): van al final y no escriben profundidad,
+		// asi se ve lo de atras y no tapan a lo que se dibuje despues
+		//=====================================================================================
+		shaderList[2].UseShader();
+		glUniformMatrix4fv(shaderList[2].GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(shaderList[2].GetViewLocation(), 1, GL_FALSE, glm::value_ptr(vista));
+		glEnable(GL_BLEND);
+		glDepthMask(GL_FALSE);
+		offsetEfecto = glm::vec2(0.0f, 0.0f);
+		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
+		// ---- AC4 escudos de energia de Reach: pulsan cada 2 s ----
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glUniform1f(uniformAlphaEfecto, 0.4f + 0.15f * sin(now * PI));
+		color = glm::vec3(0.35f, 0.75f, 1.0f);
+		glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+		escudoReach.UseTexture();
+		for (int i = 0; i < 2; i++) {
+			model = mundoReach;
+			model = glm::translate(model, glm::vec3(escudosHR[i].x, 0.2f, escudosHR[i].y));
+			model = glm::scale(model, glm::vec3(2.1f, 2.3f, 1.0f));
+			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[ESCUDO]->RenderMeshModel();
+		}
+		offsetEfecto = glm::vec2(0.0f, 0.0f);
+		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
+		glDepthMask(GL_TRUE);
+		glDisable(GL_BLEND);
+
+
+		//=====================================================================================
 		// MENU DE TECLAS (se dibuja al final, encima de todo; M lo abre y lo cierra)
 		// muestra solo las teclas del planeta donde esta la camara libre; en el espacio y en las otras camaras, las generales
 		//=====================================================================================
@@ -1689,7 +2111,7 @@ int main()
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			float margen = 0.015f * anchoVentana;
 			float ancho = menuAbierto ? 0.3f * anchoVentana : 0.17f * anchoVentana;
-			float altoMenu[4] = { 489.0f, 309.0f, 369.0f, 609.0f };	// alto en pixeles de cada panel (todos miden 1024 de ancho)
+			float altoMenu[4] = { 489.0f, 429.0f, 369.0f, 609.0f };	// alto en pixeles de cada panel (todos miden 1024 de ancho)
 			float alto = menuAbierto ? ancho * altoMenu[zona] / 1024.0f : ancho * 96.0f / 512.0f;
 			model = glm::mat4(1.0);
 			model = glm::translate(model, glm::vec3(margen, altoVentana - margen - alto, 0.0f));

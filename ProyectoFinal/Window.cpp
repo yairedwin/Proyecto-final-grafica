@@ -4,6 +4,9 @@ Window::Window()
 {
 	width = 800;
 	height = 600;
+	pelicanPresionado = false;
+	warthogAndando = false;
+	plumaArriba = false;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
@@ -14,6 +17,9 @@ Window::Window(GLint windowWidth, GLint windowHeight)
 	width = windowWidth;
 	height = windowHeight;
 	muevex = 2.0f;
+	pelicanPresionado = false;
+	warthogAndando = false;
+	plumaArriba = false;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
@@ -103,6 +109,18 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, GL_TRUE);
+	}
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)	// AB3 Pelican de Reach
+	{
+		theWindow->pelicanPresionado = true;
+	}
+	if (key == GLFW_KEY_O && action == GLFW_PRESS)	// el Warthog de Reach patrulla o se detiene
+	{
+		theWindow->warthogAndando = !theWindow->warthogAndando;
+	}
+	if (key == GLFW_KEY_J && action == GLFW_PRESS)	// la pluma del puesto de control de Reach sube o baja
+	{
+		theWindow->plumaArriba = !theWindow->plumaArriba;
 	}
 	if (key == GLFW_KEY_Y)
 	{

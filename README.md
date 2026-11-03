@@ -24,6 +24,6 @@ Cada integrante trabaja en su rama (`419049898`, `317136421`, `318337872`) y lo 
 
 ## Imágenes, modelos y documento
 
-Las imágenes, los modelos 3D y el documento están en Google Drive. Los modelos de Ratchet & Clank (`Models/rc` y las texturas `rc_*`) no se suben aquí: hay que copiarlos del Drive a la carpeta del proyecto antes de compilar.
+Las imágenes, los modelos 3D y el documento están en Google Drive. Los modelos de Ratchet & Clank (`Models/rc` y las texturas `rc_*`) y los de Halo (`Models/halo` y `Textures/halo`) no se suben aquí: hay que copiarlos del Drive a la carpeta del proyecto antes de compilar.
 
 **Enlace a Drive:** https://drive.google.com/drive/folders/1Awm0dTTBCjZd4GlclVRkpVnjBDm1YaTk?usp=sharing
