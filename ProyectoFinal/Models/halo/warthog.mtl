@@ -1,0 +1,11 @@
+newmtl tires
+Kd 1 1 1
+map_Kd halo/warthog_0.png
+
+newmtl warthog_chain_gun
+Kd 1 1 1
+map_Kd halo/warthog_1.png
+
+newmtl warthog_hull
+Kd 1 1 1
+map_Kd halo/warthog_2.png

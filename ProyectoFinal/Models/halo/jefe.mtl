@@ -1,0 +1,7 @@
+newmtl armor
+Kd 1 1 1
+map_Kd halo/jefe_0.png
+
+newmtl visor
+Kd 1 1 1
+map_Kd halo/jefe_1.png

@@ -1,0 +1,23 @@
+newmtl marine_arms
+Kd 1 1 1
+map_Kd halo/marine_0.png
+
+newmtl marine_face
+Kd 1 1 1
+map_Kd halo/marine_1.png
+
+newmtl marine_helmet
+Kd 1 1 1
+map_Kd halo/marine_2.png
+
+newmtl marine_hud
+Kd 1 1 1
+map_Kd halo/marine_3.png
+
+newmtl marine_legs
+Kd 1 1 1
+map_Kd halo/marine_4.png
+
+newmtl marine_torso
+Kd 1 1 1
+map_Kd halo/marine_5.png

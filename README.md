@@ -9,9 +9,14 @@ Escena en OpenGL 4.3 (C++, GLFW, GLEW, GLM, Assimp) con tres planetas conectados
 | 317136421 | Halo · Reach |
 | 419049898 | Ratchet & Clank · Mundo Forja |
 
-## Qué hay aquí
+## Cómo ejecutarlo
 
-El código del proyecto, en `ProyectoFinal/`, con los modelos y las texturas propios. Se abre `ProyectoFinal/ProyectoFinalLab.vcxproj` en Visual Studio y se compila en Release x64. El programa principal es `proyecto_final.cpp`, dividido en secciones por integrante. Los archivos `keyframes_cohete_*.txt` y `keyframescohete.txt` quedan junto al ejecutable.
+Todo lo necesario está en `ProyectoFinal/`: código, modelos, texturas, shaders, los archivos de keyframes y las bibliotecas.
+
+- **Sin compilar:** abrir `ProyectoFinal/ProyectoFinalLab.exe` (hace falta el Visual C++ Redistributable x64 si Windows pide `MSVCP140.dll` o `VCRUNTIME140.dll`: https://aka.ms/vc14/vc_redist.x64.exe). Debe ejecutarse desde esa misma carpeta, junto a sus `.dll`, `Models`, `Textures` y `shaders`.
+- **Compilando:** abrir `ProyectoFinal/ProyectoFinalLab.vcxproj` en Visual Studio y compilar en Release x64 (conjunto de herramientas v145; en Visual Studio 2022 se cambia a v143). Para ejecutar desde Visual Studio, el directorio de trabajo debe ser la carpeta `ProyectoFinal`.
+
+El programa principal es `proyecto_final.cpp`, dividido en secciones por integrante. Los archivos `keyframes_cohete_reach.txt`, `keyframes_cohete_venom.txt` y `keyframescohete.txt` se leen al iniciar y deben quedar junto al ejecutable.
 
 ## Versiones
 
@@ -23,8 +28,8 @@ El código del proyecto, en `ProyectoFinal/`, con los modelos y las texturas pro
 
 Cada integrante trabaja en su rama (`419049898`, `317136421`, `318337872`) y lo terminado se junta en `main`.
 
-## Imágenes, modelos y documento
+## Modelos y texturas
 
-Las imágenes, los modelos 3D y el documento están en Google Drive. Los modelos de Ratchet & Clank (`Models/rc` y las texturas `rc_*`) y los de Halo (`Models/halo` y `Textures/halo`) no se suben aquí: hay que copiarlos del Drive a la carpeta del proyecto antes de compilar.
+Los modelos y las texturas van incluidos en este repositorio. Los modelos de Ratchet & Clank y de Halo provienen de los juegos (ver `ProyectoFinal/Models/halo/FUENTES.txt`) y se usan con fines académicos. Una copia de respaldo de los modelos está en Google Drive:
 
 **Enlace a Drive:** https://drive.google.com/drive/folders/1Awm0dTTBCjZd4GlclVRkpVnjBDm1YaTk?usp=sharing

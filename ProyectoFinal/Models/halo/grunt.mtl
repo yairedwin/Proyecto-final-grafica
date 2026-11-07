@@ -1,0 +1,11 @@
+newmtl Grunt_Head_and_Tank
+Kd 1 1 1
+map_Kd halo/grunt_0.png
+
+newmtl grunt_arms
+Kd 1 1 1
+map_Kd halo/grunt_1.png
+
+newmtl grunt_torso
+Kd 1 1 1
+map_Kd halo/grunt_2.png

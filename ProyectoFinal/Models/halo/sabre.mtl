@@ -1,0 +1,63 @@
+newmtl falcon_decals
+Kd 1 1 1
+map_Kd halo/sabre_0.png
+
+newmtl sabre_body_copper
+Kd 1 1 1
+map_Kd halo/sabre_1.png
+
+newmtl sabre_body_metal
+Kd 1 1 1
+map_Kd halo/sabre_2.png
+
+newmtl sabre_body_metal_cine
+Kd 1 1 1
+map_Kd halo/sabre_3.png
+
+newmtl sabre_body_rubber
+Kd 1 1 1
+map_Kd halo/sabre_4.png
+
+newmtl sabre_frame_metal
+Kd 1 1 1
+map_Kd halo/sabre_5.png
+
+newmtl sabre_frame_metal_cine
+Kd 1 1 1
+map_Kd halo/sabre_6.png
+
+newmtl sabre_frame_rubber
+Kd 1 1 1
+map_Kd halo/sabre_7.png
+
+newmtl sabre_frame_sensor
+Kd 1 1 1
+map_Kd halo/sabre_8.png
+
+newmtl sabre_glass
+Kd 1 1 1
+map_Kd halo/sabre_9.png
+
+newmtl sabre_glass_opaque
+Kd 1 1 1
+map_Kd halo/sabre_10.png
+
+newmtl sabre_illum_green
+Kd 1 1 1
+map_Kd halo/sabre_11.png
+
+newmtl sabre_illum_red
+Kd 1 1 1
+map_Kd halo/sabre_12.png
+
+newmtl sabre_primary_engine_illum
+Kd 1 1 1
+map_Kd halo/sabre_13.png
+
+newmtl sabre_secondary_engine_illum
+Kd 1 1 1
+map_Kd halo/sabre_14.png
+
+newmtl unsc_decals
+Kd 1 1 1
+map_Kd halo/sabre_15.png

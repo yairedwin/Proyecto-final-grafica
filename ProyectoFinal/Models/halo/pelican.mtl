@@ -1,0 +1,31 @@
+newmtl pelican.003_pelican_hull.002_0_pelican.003_pelican_hull.002.001
+Kd 1 1 1
+map_Kd halo/pelican_0.png
+
+newmtl pelican.003_pelican_hull.002_0_pelican.003_pelican_hull.002.004
+Kd 1 1 1
+map_Kd halo/pelican_1.png
+
+newmtl pelican_cockpit_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_2.png
+
+newmtl pelican_glass_trans_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_3.png
+
+newmtl pelican_hull.002_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_4.png
+
+newmtl pelican_instances_composite_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_5.png
+
+newmtl pelican_instances_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_6.png
+
+newmtl unsc_decals_diffuse
+Kd 1 1 1
+map_Kd halo/pelican_7.png

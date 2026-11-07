@@ -1,0 +1,30 @@
+RECURSOS HALO - AVANCE ACADEMICO LOCAL
+
+Modelos originales de Halo de Bungie / Microsoft. Son recursos extraidos de los
+juegos; no se afirma que sean CC0 ni una licencia comercial. Conservar creditos.
+Fuente de las descargas: Models Resource (Spriters Resource).
+
+Warthog, Grunt, Marine y Jefe Maestro: Halo (PC), modelos de Shadowth117:
+https://models.spriters-resource.com/pc_computer/halo/asset/282957/
+https://models.spriters-resource.com/pc_computer/halo/asset/282978/
+https://models.spriters-resource.com/pc_computer/halo/asset/282996/
+https://models.spriters-resource.com/pc_computer/halo/asset/282903/
+Inquisidor: Halo 2, modelo de Shadowth117:
+https://models.spriters-resource.com/xbox/halo2/asset/282990/
+Sabre: Halo Reach, subido por Keltoi:
+https://models.spriters-resource.com/xbox_360/haloreach/asset/326363/
+Pelican: archivo pelican.zip que ya estaba descargado en el equipo; no se ha
+confirmado su autor de extraccion ni su licencia. No atribuirlo a un autor inventado.
+
+Los personajes y el Warthog son versiones de Halo/Halo 2, usados como figuras
+estaticas para este escenario inspirado en Reach; no son modelos exactos de Reach.
+El Sabre se convirtio de DAE a OBJ con Assimp. Los OBJ se centraron, orientaron y
+escalaron antes de cargarlos; no se requieren programas adicionales para ejecutarlos.
+Se retiraron mallas auxiliares del esqueleto y se preparo cada MTL con texturas
+relativas a Textures/halo. Algunas superficies sin imagen usan un color plano.
+El Warthog esta separado en chasis, ruedas y torreta para la jerarquia de matrices.
+Concreto, cajas, letrero UNSC, marca H y escudos son texturas sencillas generadas
+para este avance; la geometria de las construcciones se crea en el codigo.
+
+Sabre (N2 de la pista): se redujo de 29,293 a 7,999 triangulos con Blender (union de vertices y Decimate de colapso), conservando sus 16 materiales,
+y se centro en el origen. Sus texturas estan en Textures/halo/sabre_*.png.

@@ -1,0 +1,27 @@
+newmtl dervish_armor
+Kd 1 1 1
+map_Kd halo/inquisidor_0.png
+
+newmtl dervish_cloth
+Kd 1 1 1
+map_Kd halo/inquisidor_1.png
+
+newmtl dervish_eyes
+Kd 1 1 1
+map_Kd halo/inquisidor_2.png
+
+newmtl dervish_flesh
+Kd 1 1 1
+map_Kd halo/inquisidor_3.png
+
+newmtl dervish_helmet
+Kd 1 1 1
+map_Kd halo/inquisidor_4.png
+
+newmtl dervish_nude_brand
+Kd 1 1 1
+map_Kd halo/inquisidor_5.png
+
+newmtl dervish_teeth
+Kd 1 1 1
+map_Kd halo/inquisidor_6.png
