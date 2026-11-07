@@ -1,0 +1,7 @@
+Saturn V
+NASA / Michael D. Carbajal
+https://science.nasa.gov/3d-resources/saturn-v/
+Adaptacion del GLB original a OBJ y PNG para el cargador del proyecto P08. Se aplicaron las transformaciones de nodos y se conservaron los materiales y mapas de color. Altura local: 12 unidades.
+
+Cohete de Reach (cuatro piezas: etapa 1, etapa 2, etapa 3 y capsula), centradas en el origen. La etapa 1 se redujo de 32,134 a 5,500 triangulos con Blender
+reduciendo solo los materiales de color liso (las calcomanias no se tocan); las otras tres piezas no cambian. Texturas en Textures/SaturnV.

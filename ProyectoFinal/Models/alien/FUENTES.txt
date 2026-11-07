@@ -1,0 +1,9 @@
+﻿Avatar: alien insecto de un ojo (5-nov-2026)
+
+Modelo original: "alien insect 3d model" (OBJ de 147,923 vertices y 295,870 triangulos, textura basecolor de 1024x1024, exportado de Tripo).
+Preparacion en Blender:
+- se separo en 7 piezas por articulacion (cuerpo, pata izquierda, pata derecha, pata de enfrente, brazo izquierdo, brazo derecho y cola);
+- cada pieza se redujo con el modificador Decimate (primero a 40,000 triangulos en total y despues a 9,526: cuerpo 3,630, patas 1,000 / 1,168 / 1,052, brazos 926 / 844 y cola 906, soldando antes los vertices y sin mover los vertices de los bordes abiertos ni de las costuras de textura grandes, para que no se abran grietas);
+- el cuerpo quedo centrado en el origen y cada extremidad centrada en su articulacion, para poder girarla desde ahi;
+- el ojo mira hacia +Z y la altura total es 1 (en el programa se escala x4.5).
+La textura (Textures/alien_basecolor.png) es la basecolor original; los mapas normal, metallic y roughness no se usan porque el shader no los maneja.

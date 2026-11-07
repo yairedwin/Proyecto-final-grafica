@@ -1,0 +1,159 @@
+newmtl aAwArwingTex10
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex10.rgba16.png
+
+newmtl aAwArwingTex13
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex13.rgba16.png
+
+newmtl aAwArwingTex14
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex14.rgba16.png
+
+newmtl aAwArwingTex1
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex1.rgba16.png
+
+newmtl aAwWingBrokenTex
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwWingBrokenTex.rgba16.png
+
+newmtl aAwArwingTex2
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex2.rgba16.png
+
+newmtl aAwCockpitGlassTex
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwCockpitGlassTex.rgba16.png
+
+newmtl aAwCockpitGlassClouldReflextionTex
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwCockpitGlassClouldReflextionTex.rgba16.png
+
+newmtl aAwArwingTex4
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex4.rgba16.png
+
+newmtl aAwArwingTex3
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex3.rgba16.png
+
+newmtl aAwArwingTex8
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex8.rgba16.png
+
+newmtl aAwArwingTex9
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex9.rgba16.png
+
+newmtl aAwArwingTex11
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex11.rgba16.png
+
+newmtl aAwArwingTex7
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex7.rgba16.png
+
+newmtl aAwArwingTex12
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex12.rgba16.png
+
+newmtl aAwArwingTex6
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex6.rgba16.png
+
+newmtl aAwArwingTex5
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwArwingTex5.rgba16.png
+
+newmtl aAwCockpitScreenTex
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwCockpitScreenTex.rgba16.png
+
+newmtl aAwCockpitTex1
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwCockpitTex1.rgba16.png
+
+newmtl aAwCockpitTex2
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwCockpitTex2.rgba16.png
+
+newmtl aAwTeamHeadTex3
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex3.rgba16.png
+
+newmtl aAwTeamHeadTex2
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex2.rgba16.png
+
+newmtl aAwTeamHeadTex1
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex1.rgba16.png
+
+newmtl aAwTeamHeadTex7
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex7.rgba16.png
+
+newmtl aAwTeamHeadTex8
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex8.rgba16.png
+
+newmtl aAwTeamHeadTex6
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex6.rgba16.png
+
+newmtl aAwJamesHeadSunglassesTex
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwJamesHeadSunglassesTex.rgba16.png
+
+newmtl aAwSlippyHeadTex1
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwSlippyHeadTex1.rgba16.png
+
+newmtl aAwTeamHeadTex4
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex4.rgba16.png
+
+newmtl aAwTeamHeadTex5
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwTeamHeadTex5.rgba16.png
+
+newmtl aAwFalcoHeadTex7
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwFalcoHeadTex7.rgba16.png
+
+newmtl aAwFalcoHeadTex6
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd aAwFalcoHeadTex6.rgba16.png

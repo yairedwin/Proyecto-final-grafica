@@ -5,11 +5,16 @@ Window::Window()
 	width = 800;
 	height = 600;
 	pelicanPresionado = false;
+	comaPresionada = false;
+	coheteVenomPresionado = false;
+	camaraLibre = false;
 	warthogAndando = false;
 	plumaArriba = false;
+	camaraPedida = 0;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
+		teclaGolpe[i] = false;
 	}
 }
 Window::Window(GLint windowWidth, GLint windowHeight)
@@ -18,11 +23,16 @@ Window::Window(GLint windowWidth, GLint windowHeight)
 	height = windowHeight;
 	muevex = 2.0f;
 	pelicanPresionado = false;
+	comaPresionada = false;
+	coheteVenomPresionado = false;
+	camaraLibre = false;
 	warthogAndando = false;
 	plumaArriba = false;
+	camaraPedida = 0;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
+		teclaGolpe[i] = false;
 	}
 }
 int Window::Initialise()
@@ -78,6 +88,7 @@ int Window::Initialise()
 	glViewport(0, 0, bufferWidth, bufferHeight);
 	//Callback para detectar que se está usando la ventana
 	glfwSetWindowUserPointer(mainWindow, this);
+	return 0;
 }
 
 void Window::createCallbacks()
@@ -114,6 +125,18 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 	{
 		theWindow->pelicanPresionado = true;
 	}
+	if (key == GLFW_KEY_COMMA && action == GLFW_PRESS)	// el Arwing de Venom se pilota o se suelta
+	{
+		theWindow->comaPresionada = true;
+	}
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)	// el cohete de Venom despega o regresa a la cima del domo
+	{
+		theWindow->coheteVenomPresionado = true;
+	}
+	if (key == GLFW_KEY_C && action == GLFW_PRESS)	// sale del avatar y deja la camara libre, o regresa al avatar
+	{
+		theWindow->camaraLibre = !theWindow->camaraLibre;
+	}
 	if (key == GLFW_KEY_O && action == GLFW_PRESS)	// el Warthog de Reach patrulla o se detiene
 	{
 		theWindow->warthogAndando = !theWindow->warthogAndando;
@@ -121,6 +144,10 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 	if (key == GLFW_KEY_J && action == GLFW_PRESS)	// la pluma del puesto de control de Reach sube o baja
 	{
 		theWindow->plumaArriba = !theWindow->plumaArriba;
+	}
+	if (action == GLFW_PRESS && key >= GLFW_KEY_1 && key <= GLFW_KEY_6)	// camaras 1 a 6 (la 5 y la 6 son las del cohete de Reach)
+	{
+		theWindow->camaraPedida = key - GLFW_KEY_1 + 1;
 	}
 	if (key == GLFW_KEY_Y)
 	{
@@ -138,6 +165,7 @@ void Window::ManejaTeclado(GLFWwindow* window, int key, int code, int action, in
 		if (action == GLFW_PRESS)
 		{
 			theWindow->keys[key] = true;
+			theWindow->teclaGolpe[key] = true;	// queda anotada hasta que el main pregunte con getTeclaGolpe
 			//printf("se presiono la tecla %d'\n", key);
 		}
 		else if (action == GLFW_RELEASE)

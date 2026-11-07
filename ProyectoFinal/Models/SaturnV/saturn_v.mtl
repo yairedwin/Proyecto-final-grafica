@@ -1,0 +1,103 @@
+newmtl SaturnV_00
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_00.png
+
+newmtl SaturnV_01
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_01.png
+
+newmtl SaturnV_02
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_02.png
+
+newmtl SaturnV_03
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_03.png
+
+newmtl SaturnV_04
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_04.png
+
+newmtl SaturnV_05
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_05.png
+
+newmtl SaturnV_06
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_06.png
+
+newmtl SaturnV_07
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_07.png
+
+newmtl SaturnV_08
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_08.png
+
+newmtl SaturnV_09
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_09.png
+
+newmtl SaturnV_10
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_10.png
+
+newmtl SaturnV_11
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_11.png
+
+newmtl SaturnV_12
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.1 0.1 0.1
+Ns 32
+d 1
+map_Kd SaturnV/saturn_v_material_12.png

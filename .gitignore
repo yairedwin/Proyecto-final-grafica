@@ -3,7 +3,7 @@ x64/
 Debug/
 Release/
 *.user
-*.obj
+/ProyectoFinal/*.obj
 *.pdb
 *.ilk
 *.tlog

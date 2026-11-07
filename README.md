@@ -11,14 +11,15 @@ Escena en OpenGL 4.3 (C++, GLFW, GLEW, GLM, Assimp) con tres planetas conectados
 
 ## Qué hay aquí
 
-Solo el código del proyecto, en `ProyectoFinal/`. Se abre `ProyectoFinal/ProyectoFinalLab.vcxproj` en Visual Studio y se compila en Release x64. El programa principal es `proyecto_final.cpp`, dividido en secciones por integrante.
+El código del proyecto, en `ProyectoFinal/`, con los modelos y las texturas propios. Se abre `ProyectoFinal/ProyectoFinalLab.vcxproj` en Visual Studio y se compila en Release x64. El programa principal es `proyecto_final.cpp`, dividido en secciones por integrante. Los archivos `keyframes_cohete_*.txt` y `keyframescohete.txt` quedan junto al ejecutable.
 
 ## Versiones
 
 | Etiqueta | Qué es |
 |---|---|
-| `v1` | Versión de teoría (con audio), lo que había en el repositorio antes de la versión del laboratorio. |
-| `v2` | Versión del laboratorio: sin audio, planetas de radio 80, cohete Saturn V con humo, llama y separación de etapas, y Reach integrado. |
+| `v1` | Primera versión del proyecto, lo que había en el repositorio antes de la versión del laboratorio. |
+| `v2` | Planetas de radio 80, cohete Saturn V con humo, llama y separación de etapas, y Reach integrado. |
+| `v3` | Versión final del laboratorio: avatar jerárquico con caminata, Venom completo (domo, Venomianos, Wolfen y Arwing), cohetes de los tres planetas por keyframes (Forja, Reach y Venom), Sabre en la pista, todas las teclas guardadas en `Window` y modelos centrados en el origen. |
 
 Cada integrante trabaja en su rama (`419049898`, `317136421`, `318337872`) y lo terminado se junta en `main`.
 
