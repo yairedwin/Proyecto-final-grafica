@@ -13,12 +13,17 @@ Secciones del main (cada quien trabaja en la suya y en su rama):
 Teclas que ya funcionan: 1-6 camaras, WASD + mouse mueven al avatar en la camara 1, C sale del avatar y deja la camara libre
 (otra vez C regresa al avatar), T viajar al siguiente planeta,
 R cohete (AB1), G torreta (AB2), H Ratchet vuela con el Heli-Pack (KF1), L reflector S1, K luces de la estacion S2,
-P despega el Pelican de Reach (AB3), O patrulla del Warthog, J pluma del puesto de control, X acelera el ciclo de dia (solo pruebas),
+P despega el Pelican de Reach (AB3), O patrulla del Warthog, J pluma del puesto de control, X acelera el ciclo de dia,
 B cohete por keyframes (KF-P10: despega, se separa en fases y la capsula orbita la estacion),
 V guarda esos keyframes en keyframescohete.txt,
-coma (,) pilotar el Arwing de Venom con WASD, F cohete de Venom por keyframes (despega de la cima del domo; otra vez F lo regresa), F7 guarda sus keyframes en keyframes_cohete_venom.txt y F8 los lee de nuevo,
+coma (,) pilotar el Arwing de Venom con WASD (mientras lo pilotas suena su motor; el Arwing echa plasma azul y los Wolfen plasma verde), F cohete de Venom por keyframes (despega de la cima del domo; otra vez F lo regresa), F7 guarda sus keyframes en keyframes_cohete_venom.txt y F8 los lee de nuevo,
 espacio inicia o pausa el cohete de Reach (keyframes), retroceso lo reinicia, F5 guarda sus keyframes en keyframes_cohete_reach.txt y F6 los lee de nuevo
 (todas las teclas se guardan en Window y el main solo pregunta)
+Audio (clase Audio con miniaudio): soundtrack, un ambiente por planeta y la estacion que sube con la cercania, y efectos que
+solo suenan cuando pasa algo (cohetes, torreta, tornillos, vendedor, Heli-Pack, Pelican, Warthog, escudos, Jefe Maestro, Arwing).
+Evolucion de especies, cada una en 3 etapas y con su nombre arriba: Protopets (Forja), Moa (Reach), Venomianos (Venom)
+y en el espacio las ballenas espaciales (orbita sobre el sistema) y las aves de fuego (alrededor del planeta de lava).
+Keyframes que corren solos: KF-AST asteroide que cruza el sistema, KF-EST estrella fugaz y KF-SAT satelite que sale de la estacion.
 */
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
@@ -38,6 +43,7 @@ espacio inicia o pausa el cohete de Reach (keyframes), retroceso lo reinicia, F5
 #include <gtc\type_ptr.hpp>
 
 #include "Window.h"
+#include "Audio.h"
 #include "Mesh_tn.h"
 #include "Shader_light.h"
 #include "Camera.h"
@@ -69,6 +75,8 @@ Texture rocaTexture;
 Texture metalTexture;
 Texture pistaTexture;
 Texture neonTexture;	// franjas de luz de las orillas de la pista
+Texture pielTexture, plumasTexture, escamasTexture, telaTexture;	// piel con manchas, plumas, escamas y tela de las especies
+Texture nombreTexture[16];	// nombre de cada especie (cria, Protopet, mutado, Blarg y las 3 etapas del Venomiano)
 Texture menuTexture[4];	// teclas de cada planeta y del espacio (menu que se abre con M)
 Texture pestanaTexture;	// pestaña del menu cerrado
 Texture solarTexture;		// paneles solares de la estacion y los satelites
@@ -76,7 +84,9 @@ Texture ventanasTexture;	// ventanas prendidas de la estacion
 Texture planetaTexture[4];	// cuerpos celestes: gaseoso, hielo, lava, alien
 Texture anilloTexture;
 //textura cohete de venom
-Texture plasmaTexture;	// plasma azul del cohete de Venom
+Texture plasmaTexture;	// plasma azul del cohete de Venom (tambien el del Arwing)
+Texture plasmaVerdeTexture;	// plasma verde de los Wolfen: la misma textura con los canales verde y azul cambiados
+Texture brilloPlasmaTexture;	// mancha de luz redonda del plasma de las naves (8 cuadros iguales porque la malla HUMO usa 1/8 de la textura)
 
 
 
@@ -191,7 +201,17 @@ const float CICLO_ESTACION = 36.0f, T_VUELO = 14.0f;	// cada 36 s una nave sale 
 
 
 
-const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);	// plataforma de lanzamiento, en el norte de Mundo Forja
+// PLASMA DE LAS NAVES: el Arwing echa plasma azul y los Wolfen verde (las mismas particulas del cohete de Venom, pegadas a las toberas)
+// toberas medidas en los .obj (unidades del modelo; se multiplican por la escala de cada nave) y el plasma sale hacia atras (-z)
+const glm::vec3 TOBERA_ARWING[2] = { glm::vec3(140.0f, -70.0f, -340.0f), glm::vec3(-140.0f, -70.0f, -340.0f) };
+const glm::vec3 TOBERA_WOLFEN[2] = { glm::vec3(0.45f, 0.1f, -1.55f), glm::vec3(-0.45f, 0.1f, -1.55f) };
+const float PLASMA_NAVE_VIDA = 0.4f, PLASMA_NAVE_CADA = 0.03f;	// cada particula vive 0.4 s y sale una cada 0.03 s de cada tobera
+const float PLASMA_ARWING_TAM = 1.1f, PLASMA_WOLFEN_TAM = 1.2f;	// largo de la particula al nacer (el ancho es la mitad)
+
+const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);
+// los objetos de Mundo Forja se reparten por el planeta: su x y su z locales se multiplican por 1.6 (la altura no cambia);
+// la plataforma y sus dos torretas se quedan donde estaban porque el cohete por keyframes sale de ahi
+const glm::vec3 SEP_MF = glm::vec3(1.6f, 1.0f, 1.6f);	// plataforma de lanzamiento, en el norte de Mundo Forja
 
 // KF-P10 (practica 10): animacion del cohete por keyframes. Cada cuadro guarda, para las tres
 // etapas del cohete, su posicion (desde la plataforma), su giro en Z y cuanto esta encendida su
@@ -715,8 +735,28 @@ int main()
 	// (la clase Texture guarda el apuntador al nombre, no una copia, asi que los nombres tienen que seguir existiendo)
 	static const char* archivosMenu[4] = { "Textures/menu_forja.png", "Textures/menu_reach.png", "Textures/menu_venom.png", "Textures/menu_espacio.png" };
 	for (int i = 0; i < 4; i++) { menuTexture[i] = Texture(archivosMenu[i]); menuTexture[i].LoadTextureA(); }
+	nombreTexture[0] = Texture("Textures/nombre_protopet1.png");	nombreTexture[0].LoadTextureA();
+	nombreTexture[1] = Texture("Textures/nombre_protopet2.png");	nombreTexture[1].LoadTextureA();
+	nombreTexture[2] = Texture("Textures/nombre_protopet3.png");	nombreTexture[2].LoadTextureA();
+	nombreTexture[3] = Texture("Textures/nombre_blarg.png");		nombreTexture[3].LoadTextureA();
+	nombreTexture[4] = Texture("Textures/nombre_venomiano1.png");	nombreTexture[4].LoadTextureA();
+	nombreTexture[5] = Texture("Textures/nombre_venomiano2.png");	nombreTexture[5].LoadTextureA();
+	nombreTexture[6] = Texture("Textures/nombre_venomiano3.png");	nombreTexture[6].LoadTextureA();
+	nombreTexture[7] = Texture("Textures/nombre_moa1.png");		nombreTexture[7].LoadTextureA();
+	nombreTexture[8] = Texture("Textures/nombre_moa2.png");		nombreTexture[8].LoadTextureA();
+	nombreTexture[9] = Texture("Textures/nombre_moa3.png");		nombreTexture[9].LoadTextureA();
+	nombreTexture[10] = Texture("Textures/nombre_ballena1.png");		nombreTexture[10].LoadTextureA();
+	nombreTexture[11] = Texture("Textures/nombre_ballena2.png");		nombreTexture[11].LoadTextureA();
+	nombreTexture[12] = Texture("Textures/nombre_ballena3.png");		nombreTexture[12].LoadTextureA();
+	nombreTexture[13] = Texture("Textures/nombre_ave1.png");		nombreTexture[13].LoadTextureA();
+	nombreTexture[14] = Texture("Textures/nombre_ave2.png");		nombreTexture[14].LoadTextureA();
+	nombreTexture[15] = Texture("Textures/nombre_ave3.png");		nombreTexture[15].LoadTextureA();
 	pestanaTexture = Texture("Textures/menu_pestana.png");	pestanaTexture.LoadTextureA();
 	solarTexture = Texture("Textures/solar.png");			solarTexture.LoadTextureA();
+	pielTexture = Texture("Textures/piel_manchas.png");		pielTexture.LoadTextureA();	// ballenas y Protopets
+	plumasTexture = Texture("Textures/plumas.png");			plumasTexture.LoadTextureA();	// aves de fuego y Moa
+	escamasTexture = Texture("Textures/escamas.png");		escamasTexture.LoadTextureA();	// piel de los Blargs
+	telaTexture = Texture("Textures/tela.png");				telaTexture.LoadTextureA();	// overol de los Blargs
 	ventanasTexture = Texture("Textures/ventanas.png");		ventanasTexture.LoadTextureA();
 	anilloTexture = Texture("Textures/anillo.png");			anilloTexture.LoadTextureA();
 	static const char* archivosPlaneta[4] = { "Textures/planeta_gas.png", "Textures/planeta_hielo.png", "Textures/planeta_lava.png", "Textures/planeta_alien.png" };
@@ -783,6 +823,8 @@ int main()
 	humoTexture = Texture("Textures/humo.png");					humoTexture.LoadTextureA();	// 8 cuadros en fila, de humo denso a casi transparente
 	llamaTexture = Texture("Textures/llama_atlas.png");			llamaTexture.LoadTextureA();	// 8 cuadros de la llama
 	plasmaTexture = Texture("Textures/plasma_azul.png");		plasmaTexture.LoadTextureA();	// plasma azul del cohete de Venom (practica 10)
+	plasmaVerdeTexture = Texture("Textures/plasma_verde.png");	plasmaVerdeTexture.LoadTextureA();	// plasma verde de los Wolfen
+	brilloPlasmaTexture = Texture("Textures/brillo_plasma.png");	brilloPlasmaTexture.LoadTextureA();	// brillo del plasma de las naves
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
 	const char* nombresSky[4] = { "espacio", "forja", "reach", "venom" };
@@ -807,7 +849,7 @@ int main()
 	//=========================================================================================
 	// luminarias: 4 postes por planeta, solo de noche (L1 a L12; antes eran 6, dos por planeta, como en la tabla 1.13.1)
 	glm::vec3 posLuminaria[12] = {
-		C_FORJA + glm::vec3(-20, 0, -20), C_FORJA + glm::vec3(20, 0, -17), C_FORJA + glm::vec3(-36, 0, 10), C_FORJA + glm::vec3(18, 0, 26),
+		C_FORJA + SEP_MF * glm::vec3(-20, 0, -20), C_FORJA + SEP_MF * glm::vec3(20, 0, -17), C_FORJA + SEP_MF * glm::vec3(-36, 0, 10), C_FORJA + SEP_MF * glm::vec3(18, 0, 26),
 		C_REACH + glm::vec3(-31, 0, -34), C_REACH + glm::vec3(22, 0, -25), C_REACH + glm::vec3(-39, 0, 3), C_REACH + glm::vec3(22, 0, 28),	// entre los objetos de Reach ya separados
 		C_VENOM + glm::vec3(-20, 0, -14), C_VENOM + glm::vec3(20, 0, -14), C_VENOM + glm::vec3(-24, 0, 16), C_VENOM + glm::vec3(24, 0, 18) };
 	glm::vec3 colorLuminaria[3] = { glm::vec3(1.0f, 0.8f, 0.4f), glm::vec3(0.8f, 0.9f, 1.0f), glm::vec3(0.3f, 1.0f, 0.3f) };	// forja amarillo, reach blanco azulado, venom verde
@@ -819,8 +861,8 @@ int main()
 	// luces de ambiente que siempre estan prendidas: le dan color a cada planeta y a la pista
 	const int N_AMBIENTE = 10;
 	glm::vec3 posAmbiente[N_AMBIENTE] = {
-		C_FORJA + glm::vec3(24, 6, 1),		// horno de la refineria
-		C_FORJA + glm::vec3(-6, 4, 3),		// vendedor Gadgetron
+		C_FORJA + SEP_MF * glm::vec3(24, 6, 1),		// horno de la refineria
+		C_FORJA + SEP_MF * glm::vec3(-6, 4, 3),		// vendedor Gadgetron
 		C_REACH + glm::vec3(-14, 6, -16),	// frente del cuartel
 		C_REACH + glm::vec3(34, 3, 14),		// zona de aterrizaje
 		C_VENOM + glm::vec3(0, 7, 17),		// base de Andross
@@ -857,7 +899,7 @@ int main()
 	float tTransicion = 1.0f;	// 1 = ya llego; cuando cambia de camara se reinicia y se interpola 0.5 s
 	float anguloC4 = 0.0f;
 	// puntos de llegada para la tecla T (centro de cada planeta, en el orden P1 -> P2 -> P3)
-	glm::vec3 llegadas[3] = { C_FORJA + glm::vec3(-30.0f, 8.0f, 24.0f), C_REACH + glm::vec3(-25.0f, 8.0f, 28.0f), C_VENOM + glm::vec3(0.0f, 8.0f, -33.0f) };	// dentro de la zona del skybox de cada planeta
+	glm::vec3 llegadas[3] = { C_FORJA + SEP_MF * glm::vec3(-30.0f, 8.0f, 24.0f), C_REACH + glm::vec3(-25.0f, 8.0f, 28.0f), C_VENOM + glm::vec3(0.0f, 8.0f, -33.0f) };	// dentro de la zona del skybox de cada planeta
 	int planetaActual = 0;
 	// avatar: camina sobre el plano XZ del planeta y la camara 1 lo sigue desde atras
 	glm::vec3 avatarPos = glm::vec3(llegadas[0].x, 0.0f, llegadas[0].z);
@@ -971,6 +1013,34 @@ int main()
 	float giroBaseRatchet = -90.0f, giroVendedor = 0.0f, giroBaseHoverbike = -90.0f;
 	glm::vec3 clankEspalda = glm::vec3(-0.32f, 0.72f, 0.0f);	// desde los pies de Clank
 	const int i_max_steps = 90;
+	// KF-AST asteroide por keyframes: cada cuadro guarda posicion y giro; entre cuadro y cuadro pasan AST_PASO segundos.
+	// Cruza todo el sistema por arriba de la pista y al llegar al ultimo cuadro vuelve a salir del primero
+	glm::vec3 astPos[8] = { glm::vec3(-260, 95, -70), glm::vec3(-180, 82, -30), glm::vec3(-100, 72, 5), glm::vec3(-20, 64, 40),
+		glm::vec3(60, 58, 80), glm::vec3(140, 52, 125), glm::vec3(215, 46, 170), glm::vec3(290, 40, 215) };
+	float astGiro[8] = { 0.0f, 90.0f, 200.0f, 330.0f, 470.0f, 600.0f, 720.0f, 840.0f };
+	const float AST_PASO = 2.5f;
+	float astReloj = 0.0f, astF = 0.0f, astGiroAct = 0.0f;
+	int astCuadro = 0;
+	glm::vec3 astAct = astPos[0];
+	// KF-EST estrella fugaz por keyframes: posicion y brillo; cruza el cielo en 5 tramos cortos y espera EST_ESPERA segundos apagada
+	glm::vec3 estPos[6] = { glm::vec3(-160, 175, -130), glm::vec3(-95, 163, -68), glm::vec3(-30, 150, -5),
+		glm::vec3(35, 135, 58), glm::vec3(100, 118, 120), glm::vec3(165, 100, 182) };
+	float estBrillo[6] = { 0.0f, 1.0f, 1.0f, 0.9f, 0.5f, 0.0f };
+	const float EST_PASO = 0.45f, EST_ESPERA = 6.0f;
+	float estReloj = 0.0f, estF = 0.0f, estBrilloAct = 0.0f;
+	int estCuadro = 5;	// empieza esperando
+	glm::vec3 estAct = estPos[0], estDir = glm::vec3(0.0f);
+	// KF-SAT satelite explorador por keyframes: posicion y angulo de los paneles (90 doblados, 0 abiertos);
+	// sale de la estacion, abre los paneles, rodea el planeta gaseoso, los cierra y vuelve a entrar (el ultimo cuadro es igual al primero)
+	glm::vec3 satPos[9] = { C_ESTACION, C_ESTACION + glm::vec3(0, 0, -16), glm::vec3(5, 78, -115), glm::vec3(-12, 70, -150),
+		glm::vec3(-40, 66, -205), glm::vec3(-72, 68, -170), glm::vec3(-45, 76, -128), C_ESTACION + glm::vec3(0, 0, -16), C_ESTACION };
+	float satPanel[9] = { 90.0f, 90.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 90.0f, 90.0f };
+	const float SAT_PASO = 3.0f;
+	float satReloj = 0.0f, satF = 0.0f, satPanelAct = 90.0f, satYaw = 0.0f;
+	int satCuadro = 0;
+	glm::vec3 satAct = satPos[0], satDir = glm::vec3(0.0f, 0.0f, -1.0f);
+	glm::mat4 satM = glm::mat4(1.0f), panelM = glm::mat4(1.0f);
+	float chispa = 0.0f;	// brillo de la pieza que martillan los Blargs
 	int kfCuadro = 0, i_curr_steps = 0; bool kfReproduciendo = false;
 	glm::vec3 kfActual = kfPos[0]; float kfGiroActual = kfGiro[0]; float kfAcum = 0.0f;
 	// KF-P10 cohete por keyframes (tecla B): cuadro actual, paso dentro del cuadro y valores
@@ -1081,6 +1151,84 @@ int main()
 	float radioVen = 0.0f, sgnVen = 1.0f, angVen = 0.0f, rumboVen = 0.0f, saltoVen = 0.0f, cuerpoYVen = 0.0f, faseVen = 0.0f;
 	glm::vec3 pVen = glm::vec3(0.0f);
 	glm::mat4 mVen = glm::mat4(1.0f), hVen = glm::mat4(1.0f);
+	// Moa (NPCs de Reach): el ave nativa de Reach en tres etapas, cria -> juvenil -> adulto, en un claro al sureste del planeta
+	const glm::vec3 CENTRO_MOA = C_REACH + 2.8f * glm::vec3(14.0f, 0.0f, -16.0f);	// (14, -16) en las coordenadas del plano de Reach: claro lejos del cohete, los pinos y las rocas
+	float escMoa[3] = { 0.55f, 0.85f, 1.25f };
+	glm::vec3 colMoa[3] = { glm::vec3(0.9f, 0.8f, 0.6f), glm::vec3(0.68f, 0.55f, 0.38f), glm::vec3(0.5f, 0.43f, 0.35f) };
+	float radioMoa = 0.0f, sgnMoa = 1.0f, angMoa = 0.0f, rumboMoa = 0.0f, saltoMoa = 0.0f, faseMoa = 0.0f, picoMoa = 0.0f;
+	glm::vec3 pMoa = glm::vec3(0.0f);
+	glm::mat4 mMoa = glm::mat4(1.0f), cuelloMoa = glm::mat4(1.0f), cabezaMoa = glm::mat4(1.0f);
+	// Ballenas espaciales: nadan en una orbita grande por encima del sistema (cria, juvenil y adulta, en grupo)
+	const glm::vec3 CENTRO_BALLENAS = glm::vec3(0.0f, 95.0f, 20.0f);
+	const float RADIO_BALLENAS = 125.0f;
+	float escBallena[3] = { 1.2f, 2.0f, 3.2f };
+	glm::vec3 colBallena[3] = { glm::vec3(0.8f, 1.15f, 1.7f), glm::vec3(0.6f, 0.9f, 1.6f), glm::vec3(0.45f, 0.7f, 1.5f) };	// mas de 1: brillan un poco, como bioluminiscentes, para verse en el espacio
+	float angBallena = 0.0f, faseBallena = 0.0f, rumboBallena = 0.0f;
+	glm::vec3 pBallena = glm::vec3(0.0f);
+	glm::mat4 mBallena = glm::mat4(1.0f), colaBallena = glm::mat4(1.0f), aletaBallena = glm::mat4(1.0f);
+	// Aves de fuego: vuelan en circulos alrededor del planeta de lava (CE3), polluelo -> joven -> adulta
+	const glm::vec3 CENTRO_AVES = glm::vec3(-75.0f, 48.0f, 150.0f);
+	float escAve[3] = { 0.8f, 1.3f, 2.0f }, radioAve[3] = { 9.0f, 13.0f, 18.0f }, velAve[3] = { 1.1f, -0.8f, 0.55f };
+	float angAve = 0.0f, faseAve = 0.0f, rumboAve = 0.0f, sgnAve = 1.0f;
+	glm::vec3 pAve = glm::vec3(0.0f);
+	glm::mat4 mAve = glm::mat4(1.0f), alaAve = glm::mat4(1.0f);
+
+	// plasma de las naves: cada particula guarda la matriz de la nave (sin escala) con el origen en su tobera, asi la estela se queda donde salio
+	const int MAX_PLASMA_NAVE = 360;
+	glm::mat4 plasmaNaveM[MAX_PLASMA_NAVE];
+	float plasmaNaveEdad[MAX_PLASMA_NAVE], plasmaNaveTam[MAX_PLASMA_NAVE];
+	bool plasmaNaveVerde[MAX_PLASMA_NAVE];
+	for (int i = 0; i < MAX_PLASMA_NAVE; i++) { plasmaNaveM[i] = glm::mat4(1.0f); plasmaNaveEdad[i] = PLASMA_NAVE_VIDA; plasmaNaveTam[i] = 0.0f; plasmaNaveVerde[i] = false; }	// al empezar no hay plasma
+	float plasmaNaveAcum = 0.0f, empujeArwing = 1.0f;
+	int plasmaNaveSig = 0;
+	glm::mat4 naveM = glm::mat4(1.0f), giroCamara = glm::mat4(1.0f);
+	// la malla del plasma cuelga hacia -y; con este giro de 90 grados en X cuelga hacia -z, o sea hacia atras de la nave
+	const glm::mat4 giroTobera = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+	// AUDIO (miniaudio): un soundtrack continuo, un ambiente por zona que sube o baja con la distancia de la camara
+	// y efectos que solo suenan cuando pasa algo (despega un cohete, dispara la torreta, se recoge un tornillo...)
+	Audio::Abrir("musica", "audio/musica_espacio.wav");
+	Audio::Abrir("ambForja", "audio/ambiente_forja.wav");
+	Audio::Abrir("ambReach", "audio/ambiente_reach.wav");
+	Audio::Abrir("ambVenom", "audio/ambiente_venom.wav");
+	Audio::Abrir("ambEstacion", "audio/ambiente_estacion.wav");
+	Audio::Abrir("cohete", "audio/sfx_cohete.wav");
+	Audio::Abrir("torreta", "audio/sfx_torreta.wav");
+	Audio::Abrir("tornillo", "audio/sfx_tornillo.wav");
+	Audio::Abrir("vendedor", "audio/sfx_vendedor.wav");
+	Audio::Abrir("heli", "audio/sfx_heli.wav");
+	// Reach 317136421: motores del Pelican y del Warthog, zumbido de los escudos y aviso del Jefe Maestro
+	Audio::Abrir("pelican", "audio/sfx_reach_pelican.wav");
+	Audio::Abrir("warthog", "audio/sfx_reach_warthog.wav");
+	Audio::Abrir("escudos", "audio/sfx_reach_escudos.wav");
+	Audio::Abrir("jefe", "audio/sfx_reach_jefe.wav");
+	// Venom 318337872: motor del Arwing mientras se pilota
+	Audio::Abrir("arwing", "audio/motor_arwing.wav");
+	Audio::Volumen("pelican", 0);
+	Audio::Volumen("warthog", 0);
+	Audio::Volumen("arwing", 750);
+	Audio::Volumen("musica", 220);
+	Audio::Volumen("ambForja", 0);
+	Audio::Volumen("ambReach", 0);
+	Audio::Volumen("ambVenom", 0);
+	Audio::Volumen("ambEstacion", 0);
+	Audio::Reproducir("musica", true);
+	Audio::Reproducir("ambForja", true);
+	Audio::Reproducir("ambReach", true);
+	Audio::Reproducir("ambVenom", true);
+	Audio::Reproducir("ambEstacion", true);
+	float volForja = 0.0f, volReach = 0.0f, volVenom = 0.0f, volEstacion = 0.0f, distVendedor = 0.0f;
+	bool vendedorSaludo = false, heliSonando = false;
+	bool warthogSonando = false, escudosSonando = false, jefeSonando = false, arwingSonando = false;
+	float distanciaEscudos = 0.0f, volEscudos = 0.0f, distanciaJefe = 0.0f, volJefe = 0.0f, volPelican = 0.0f, volWarthog = 0.0f;
+	glm::vec3 posAudioEscudo0 = C_REACH + escalaReach * glm::vec3(escudosHR[0].x, 1.35f, escudosHR[0].y);
+	glm::vec3 posAudioEscudo1 = C_REACH + escalaReach * glm::vec3(escudosHR[1].x, 1.35f, escudosHR[1].y);
+	glm::vec3 posAudioJefe = C_REACH + escalaReach * (posNpcHR[3] + glm::vec3(0.0f, mitadNpcHR[3], 0.0f));
+	glm::vec3 posAudioPelican = glm::vec3(0.0f), posAudioWarthog = glm::vec3(0.0f);
+	// nombres que flotan arriba de las especies: 0-2 Protopets, 3-6 Blargs, 7-9 Venomianos, 10-12 Moa, 13-15 ballenas espaciales, 16-18 aves de fuego (cada cuadro se actualiza su posicion)
+	glm::vec3 posNombre[19];
+	for (int i = 0; i < 19; i++) posNombre[i] = glm::vec3(0.0f);
+	int texNombre = 0;
 
 	////Loop mientras no se cierra la ventana
 	while (!mainWindow.getShouldClose())
@@ -1096,19 +1244,28 @@ int main()
 		teclas = mainWindow.getsKeys();
 
 		// AB3: P (se guarda en Window) arranca el despegue del Pelican; sube, espera arriba y aterriza
-		if (mainWindow.getPelicanPresionado() && !pelicanActivo) { pelicanActivo = true; tiempoPelican = 0.0f; }
+		if (mainWindow.getPelicanPresionado() && !pelicanActivo) { pelicanActivo = true; tiempoPelican = 0.0f; Audio::Reproducir("pelican", false); }
 		if (pelicanActivo) {
 			tiempoPelican += dt;
 			if (tiempoPelican < 3.0f) alturaPelican = 2.0f * tiempoPelican;
 			else if (tiempoPelican < 5.0f) alturaPelican = 6.0f;
 			else if (tiempoPelican < 8.0f) alturaPelican = 6.0f - 2.0f * (tiempoPelican - 5.0f);
-			else { alturaPelican = 0.0f; pelicanActivo = false; }
+			else { alturaPelican = 0.0f; pelicanActivo = false; Audio::Detener("pelican"); }
 		}
 		// O (se guarda en Window): mientras patrulla, el Warthog avanza 0.5 rad/s sobre su circulo y la torreta vigila de lado a lado
 		if (mainWindow.getwarthogAndando()) {
 			anguloWarthog += 0.5f * dt;
 			giroRuedas += glm::degrees(radioPatrulla * 0.5f * dt / radioRueda);	// lo que avanza entre el radio de la rueda
 			giroTorretaW = 35.0f * sin(1.5f * now);
+		}
+		// El motor empieza al patrullar y se detiene al volver a pulsar O.
+		if (mainWindow.getwarthogAndando() && !warthogSonando) {
+			Audio::Reproducir("warthog", true);
+			warthogSonando = true;
+		}
+		if (!mainWindow.getwarthogAndando() && warthogSonando) {
+			Audio::Detener("warthog");
+			warthogSonando = false;
 		}
 		// J (se guarda en Window): la pluma sube o baja 60 grados por segundo hasta su tope
 		if (mainWindow.getplumaArriba()) anguloPluma = glm::min(anguloPluma + 60.0f * dt, 80.0f);
@@ -1118,7 +1275,7 @@ int main()
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_L)) s1Prendido = !s1Prendido;
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_K)) s2Prendido = !s2Prendido;
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_X)) velocidadDia = velocidadDia > 1.0f ? 1.0f : 10.0f;
-		if (mainWindow.getTeclaGolpe(GLFW_KEY_R) && faseCohete == 0 && !kcActivo) { faseCohete = 1; tCohete = 0.0f; }
+		if (mainWindow.getTeclaGolpe(GLFW_KEY_R) && faseCohete == 0 && !kcActivo) { faseCohete = 1; tCohete = 0.0f; Audio::Reproducir("cohete", false); }
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_G) && faseTorreta == 0) {
 			faseTorreta = 1;
 			t3 = C_FORJA + glm::vec3(-11.2f, 0.0f, -28.0f);	// torreta de la izquierda de la plataforma
@@ -1134,6 +1291,7 @@ int main()
 			kcActivo = !kcActivo; kcCuadro = 0; kcPasos = 0; kcAcum = 0.0f;
 			if (kcActivo) {
 				printf("--- cohete por keyframes: inicia ---\n");
+				Audio::Reproducir("cohete", false);
 				kcEncabezado(); kcImprimir(0);
 				// la camara pasa a la C4, que con el cohete activo mira donde dicen los keyframes
 				camPosAntes = camPos; camMiraAntes = camMira; tTransicion = 0.0f; modoCamara = 4;
@@ -1202,6 +1360,77 @@ int main()
 			posArwing.y = glm::clamp(posArwing.y, ARWING_ALT_MIN, ARWING_ALT_MAX);
 		}
 
+		// motor del Arwing (318337872): suena solo mientras se pilota con la coma
+		if (pilotando && !arwingSonando) { Audio::Reproducir("arwing", true); arwingSonando = true; }
+		if (!pilotando && arwingSonando) { Audio::Detener("arwing"); arwingSonando = false; }
+
+		// ---- plasma de las naves: cada PLASMA_NAVE_CADA s sale una particula de cada tobera (Arwing azul, Wolfen verde) ----
+		plasmaNaveAcum += dt;
+		empujeArwing = pilotando ? 1.25f : 1.0f;	// cuando lo pilotas el plasma sale mas grande
+		while (plasmaNaveAcum >= PLASMA_NAVE_CADA) {
+			plasmaNaveAcum -= PLASMA_NAVE_CADA;
+			// Arwing: la misma matriz que usa el dibujo, sin la escala
+			naveM = glm::translate(glm::mat4(1.0), posArwing);
+			naveM = glm::rotate(naveM, yawArwing, glm::vec3(0.0f, 1.0f, 0.0f));
+			naveM = glm::rotate(naveM, -pitchArwing, glm::vec3(1.0f, 0.0f, 0.0f));
+			naveM = glm::rotate(naveM, rollArwing, glm::vec3(0.0f, 0.0f, 1.0f));
+			for (int n = 0; n < 2; n++) {	// una particula nueva en cada tobera (anillo: la mas vieja se reemplaza)
+				plasmaNaveM[plasmaNaveSig] = glm::translate(naveM, TOBERA_ARWING[n] * ARWING_ESCALA) * giroTobera;
+				plasmaNaveTam[plasmaNaveSig] = PLASMA_ARWING_TAM * empujeArwing * (1.0f + 0.12f * sinf(45.0f * now + 2.0f * n));
+				plasmaNaveVerde[plasmaNaveSig] = false;
+				plasmaNaveEdad[plasmaNaveSig] = 0.0f;
+				plasmaNaveSig = (plasmaNaveSig + 1) % MAX_PLASMA_NAVE;
+			}
+			// los 3 Wolfen que patrullan: mismas formulas que el dibujo de la seccion 7
+			for (int i = 0; i < 3; i++) {
+				aW = wWolfen[i] * now + faseWolfen[i];
+				bobW = 0.7f * now + 1.7f * i;
+				pW = C_VENOM + glm::vec3(radioWolfen[i] * cosf(aW), altWolfen[i] + 2.0f * sinf(bobW), 0.8f * radioWolfen[i] * sinf(aW));
+				vxW = -radioWolfen[i] * sinf(aW) * wWolfen[i]; vzW = 0.8f * radioWolfen[i] * cosf(aW) * wWolfen[i]; vyW = 1.4f * cosf(bobW);
+				yW = atan2f(vxW, vzW);
+				pitW = atan2f(vyW, sqrtf(vxW * vxW + vzW * vzW));
+				rolW = wWolfen[i] > 0.0f ? 0.5f : -0.5f;
+				naveM = glm::translate(glm::mat4(1.0), pW);
+				naveM = glm::rotate(naveM, yW, glm::vec3(0.0f, 1.0f, 0.0f));
+				naveM = glm::rotate(naveM, -pitW, glm::vec3(1.0f, 0.0f, 0.0f));
+				naveM = glm::rotate(naveM, rolW, glm::vec3(0.0f, 0.0f, 1.0f));
+				for (int n = 0; n < 2; n++) {	// una particula nueva en cada tobera (anillo: la mas vieja se reemplaza)
+					plasmaNaveM[plasmaNaveSig] = glm::translate(naveM, TOBERA_WOLFEN[n] * WOLFEN_ESCALA) * giroTobera;
+					plasmaNaveTam[plasmaNaveSig] = PLASMA_WOLFEN_TAM * (1.0f + 0.12f * sinf(45.0f * now + 2.0f * n + 1.3f * i));
+					plasmaNaveVerde[plasmaNaveSig] = true;
+					plasmaNaveEdad[plasmaNaveSig] = 0.0f;
+					plasmaNaveSig = (plasmaNaveSig + 1) % MAX_PLASMA_NAVE;
+				}
+			}
+			// las naves que salen de las mini estaciones (la misma figura de Wolfen): solo echan plasma mientras vuelan
+			for (int k = 0; k < N_ESTACIONES; k++) {
+				cN = fmodf(now + 9.0f * k, CICLO_ESTACION);
+				if (cN < T_VUELO) { sN = cN / T_VUELO; sentidoN = 1.0f; }
+				else if (cN >= 18.0f && cN < 18.0f + T_VUELO) { sN = 1.0f - (cN - 18.0f) / T_VUELO; sentidoN = -1.0f; }
+				else continue;	// guardada en el hangar
+				aN = PI / 2.0f + k * 2.0f * PI / 3.0f;
+				ePosN = C_VENOM + glm::vec3(R_ESTACION * cosf(aN), ALT_ESTACION + 0.6f * sinf(0.8f * now + 2.0f * k), R_ESTACION * sinf(aN));
+				eYawN = atan2f(-cosf(aN), -sinf(aN));
+				FN = glm::vec3(sinf(eYawN), 0.0f, cosf(eYawN));
+				s2N = glm::max(sN, 0.02f);
+				pN = ePosN + FN * (3.5f + 280.0f * powf(sN, 1.7f)) + glm::vec3(0.0f, 120.0f * powf(sN, 2.2f), 0.0f);
+				dirN = glm::normalize(FN * (280.0f * 1.7f * powf(s2N, 0.7f)) + glm::vec3(0.0f, 120.0f * 2.2f * powf(s2N, 1.2f), 0.0f)) * sentidoN;
+				yN = atan2f(dirN.x, dirN.z);
+				pitN = asinf(glm::clamp(dirN.y, -1.0f, 1.0f));
+				naveM = glm::translate(glm::mat4(1.0), pN);
+				naveM = glm::rotate(naveM, yN, glm::vec3(0.0f, 1.0f, 0.0f));
+				naveM = glm::rotate(naveM, -pitN, glm::vec3(1.0f, 0.0f, 0.0f));
+				for (int n = 0; n < 2; n++) {	// una particula nueva en cada tobera (anillo: la mas vieja se reemplaza)
+					plasmaNaveM[plasmaNaveSig] = glm::translate(naveM, TOBERA_WOLFEN[n] * WOLFEN_ESCALA) * giroTobera;
+					plasmaNaveTam[plasmaNaveSig] = PLASMA_WOLFEN_TAM * (1.0f + 0.12f * sinf(45.0f * now + 2.0f * n + 0.9f * k));
+					plasmaNaveVerde[plasmaNaveSig] = true;
+					plasmaNaveEdad[plasmaNaveSig] = 0.0f;
+					plasmaNaveSig = (plasmaNaveSig + 1) % MAX_PLASMA_NAVE;
+				}
+			}
+		}
+		for (int i = 0; i < MAX_PLASMA_NAVE; i++) if (plasmaNaveEdad[i] < PLASMA_NAVE_VIDA) plasmaNaveEdad[i] += dt;	// cada particula envejece
+
 		if (modoCamara == 1 && !pilotando && camaraLibreAntes) {	// camara libre: WASD y el mouse mueven la camara, el avatar se queda parado donde estaba
 			camera.keyControl(teclas, deltaTime);
 			dx = mainWindow.getXChange();
@@ -1263,6 +1492,30 @@ int main()
 			kfActual = kfPos[kfCuadro] + (kfPos[sig] - kfPos[kfCuadro]) * f2;
 			kfGiroActual = kfGiro[kfCuadro] + (kfGiro[sig] - kfGiro[kfCuadro]) * f2;
 		}
+
+		// ---- KF-AST, KF-EST y KF-SAT: avanza el reloj de cada uno y se interpola linealmente entre el cuadro actual y el siguiente ----
+		astReloj += dt;
+		if (astReloj >= AST_PASO) { astReloj -= AST_PASO; astCuadro = (astCuadro + 1) % 7; }	// 7 tramos; despues del ultimo vuelve al primero
+		astF = astReloj / AST_PASO;
+		astAct = astPos[astCuadro] + (astPos[astCuadro + 1] - astPos[astCuadro]) * astF;
+		astGiroAct = astGiro[astCuadro] + (astGiro[astCuadro + 1] - astGiro[astCuadro]) * astF;
+		estReloj += dt;
+		if (estCuadro < 5 && estReloj >= EST_PASO) { estReloj -= EST_PASO; estCuadro++; }
+		else if (estCuadro == 5 && estReloj >= EST_ESPERA) { estReloj = 0.0f; estCuadro = 0; }	// termina la espera y vuelve a cruzar
+		if (estCuadro < 5) {
+			estF = estReloj / EST_PASO;
+			estAct = estPos[estCuadro] + (estPos[estCuadro + 1] - estPos[estCuadro]) * estF;
+			estBrilloAct = estBrillo[estCuadro] + (estBrillo[estCuadro + 1] - estBrillo[estCuadro]) * estF;
+			estDir = glm::normalize(estPos[estCuadro + 1] - estPos[estCuadro]);
+		}
+		else estBrilloAct = 0.0f;
+		satReloj += dt;
+		if (satReloj >= SAT_PASO) { satReloj -= SAT_PASO; satCuadro = (satCuadro + 1) % 8; }	// 8 tramos; el ultimo cuadro es igual al primero
+		satF = satReloj / SAT_PASO;
+		satAct = satPos[satCuadro] + (satPos[satCuadro + 1] - satPos[satCuadro]) * satF;
+		satPanelAct = satPanel[satCuadro] + (satPanel[satCuadro + 1] - satPanel[satCuadro]) * satF;
+		if (glm::length(satPos[satCuadro + 1] - satPos[satCuadro]) > 0.01f) satDir = glm::normalize(satPos[satCuadro + 1] - satPos[satCuadro]);
+		satYaw = atan2(satDir.x, satDir.z);	// el satelite mira hacia donde va
 		// ---- COHETE DE REACH (Practica 10 de 317136421): espacio inicia o pausa, retroceso reinicia, F5 guarda el txt y F6 lo lee de nuevo (las teclas se guardan en Window) ----
 		reachTabla = mainWindow.getTeclaGolpe(GLFW_KEY_F6);
 		if (reachLeer || reachTabla) {	// al arrancar y con F6 se leen los cuadros del txt; si algo no cuadra se conservan los que ya estaban
@@ -1309,6 +1562,7 @@ int main()
 		}
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_SPACE) && reachN > 0) {	// espacio inicia, pausa o continua
 			reachPlay = !reachPlay;
+			if (reachPlay && reachCuadro == 0) Audio::Reproducir("cohete", false);	// solo al despegar, no al quitar la pausa
 			reachMsg = reachPlay ? "REACH: REPRODUCIENDO KEYFRAMES" : "REACH: EN PAUSA"; reachImp = reachCuadro; reachImpFin = reachCuadro;
 		}
 		if (mainWindow.getTeclaGolpe(GLFW_KEY_BACKSPACE) && reachN > 0) {	// retroceso regresa al primer cuadro y queda en pausa
@@ -1525,7 +1779,7 @@ int main()
 			vkLeer = false;
 		}
 		if (mainWindow.getCoheteVenomPresionado() && vkN > 0) {	// F: despega; si ya esta en marcha, regresa a la cima del domo y espera
-			if (!vkPlay) { vkPlay = true; vkMsg = "VENOM: REPRODUCIENDO KEYFRAMES"; vkImp = vkCuadro; vkImpFin = vkCuadro; }
+			if (!vkPlay) { vkPlay = true; Audio::Reproducir("cohete", false); vkMsg = "VENOM: REPRODUCIENDO KEYFRAMES"; vkImp = vkCuadro; vkImpFin = vkCuadro; }
 			else {
 				vkReloj = 0.0f; vkCuadro = 0; vkPlay = false;
 				for (vkCol = 0; vkCol < 19; vkCol++) vkAct[vkCol] = vkD[0][vkCol];
@@ -1616,7 +1870,7 @@ int main()
 			giroTorre += glm::clamp(dif2, -90.0f * dt, 90.0f * dt);
 			angCanon = glm::min(angCanon + 20.0f * dt, 15.0f);
 			if (fabs(dif2) < 1.0f && angCanon >= 15.0f) {
-				faseTorreta = 2; tBala = 0.0f; retroceso = 0.3f;
+				faseTorreta = 2; tBala = 0.0f; retroceso = 0.3f; Audio::Reproducir("torreta", false);
 				posBala = C_FORJA + glm::vec3(-11.2f, 2.2f, -28.0f);
 				dirBala = glm::vec3(sin(glm::radians(giroTorre)), -sin(glm::radians(angCanon)) * 0.3f, cos(glm::radians(giroTorre)));
 			}
@@ -2101,6 +2355,188 @@ int main()
 			}
 		}
 
+		// ---- KF-AST asteroide por keyframes: el meteoro de Kenney, grande y girando segun sus cuadros ----
+		model = glm::translate(glm::mat4(1.0), astAct);
+		model = glm::rotate(model, glm::radians(astGiroAct), glm::vec3(0.4f, 1.0f, 0.2f));
+		model = glm::scale(model, glm::vec3(9.0f, 9.0f, 9.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.7f, 0.6f, 0.5f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		roca.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		meteoro.RenderModel();
+		// ---- KF-SAT satelite explorador: cuerpo con antena; los paneles son hijos del cuerpo y giran en su bisagra segun los keyframes ----
+		metalTexture.UseTexture();
+		metalPulido.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		satM = glm::translate(glm::mat4(1.0), satAct);
+		satM = glm::rotate(satM, satYaw, glm::vec3(0.0f, 1.0f, 0.0f));
+		satM = glm::scale(satM, glm::vec3(1.6f, 1.6f, 1.6f));
+		model = glm::scale(satM, glm::vec3(1.2f, 1.2f, 2.0f));	// cuerpo
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.85f, 0.75f, 0.35f);	// lamina dorada
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		meshListModel[CUBO]->RenderMeshModel();
+		model = glm::translate(satM, glm::vec3(0.0f, 0.0f, 1.0f));	// antena: cono que apunta hacia adelante
+		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.6f, 0.7f, 0.6f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		color = glm::vec3(0.9f, 0.9f, 0.92f);
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		meshListModel[CONO]->RenderMeshModel();
+		for (int lado = -1; lado <= 1; lado += 2) {
+			panelM = glm::translate(satM, glm::vec3(lado * 0.6f, 0.0f, 0.0f));	// bisagra en el costado del cuerpo
+			panelM = glm::rotate(panelM, glm::radians(lado * satPanelAct), glm::vec3(0.0f, 0.0f, 1.0f));	// 90 doblado hacia arriba, 0 abierto
+			model = glm::translate(panelM, glm::vec3(lado * 1.6f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(3.0f, 0.08f, 1.3f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.0f, 1.0f, 1.0f);	// la textura ya trae las celdas solares
+			solarTexture.UseTexture();
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
+		}
+		metalTexture.UseTexture();
+
+		// ---- BALLENAS ESPACIALES (especie del espacio): cria, juvenil y adulta nadan juntas en una orbita grande ----
+		// jerarquia con primitivas: el cuerpo es el padre de la panza, los ojos, las aletas y la cola; de la cola cuelga la aleta caudal.
+		// La cola sube y baja con un seno (como si nadaran) y la cria va un poco atras y abajo de la adulta
+		pielTexture.UseTexture();	// piel con manchas, tenida con el color de cada etapa
+		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 3; i++) {
+			angBallena = 0.05f * now - (2 - i) * 0.07f;	// la adulta va adelante y las otras la siguen
+			pBallena = CENTRO_BALLENAS + glm::vec3(RADIO_BALLENAS * cos(angBallena), 6.0f * sin(0.3f * now + i) - (2 - i) * 4.0f, RADIO_BALLENAS * sin(angBallena));
+			rumboBallena = atan2(-sin(angBallena), cos(angBallena));	// mira hacia donde nada
+			faseBallena = (i == 0 ? 2.4f : (i == 1 ? 1.8f : 1.3f)) * now;	// las chicas mueven la cola mas rapido
+			posNombre[13 + i] = pBallena + glm::vec3(0.0f, 1.6f * escBallena[i] + 2.5f, 0.0f);
+			mBallena = glm::translate(glm::mat4(1.0f), pBallena);
+			mBallena = glm::rotate(mBallena, rumboBallena, glm::vec3(0.0f, 1.0f, 0.0f));
+			mBallena = glm::rotate(mBallena, glm::radians(4.0f * sin(faseBallena)), glm::vec3(1.0f, 0.0f, 0.0f));	// sube y baja la nariz al nadar
+			mBallena = glm::scale(mBallena, glm::vec3(escBallena[i], escBallena[i], escBallena[i]));
+			// cuerpo (padre)
+			model = glm::scale(mBallena, glm::vec3(1.2f, 1.0f, 3.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colBallena[i];
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			// panza clara
+			model = glm::translate(mBallena, glm::vec3(0.0f, -0.35f, 0.2f));
+			model = glm::scale(model, glm::vec3(0.95f, 0.7f, 2.6f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.3f, 1.4f, 1.6f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			for (int lado = -1; lado <= 1; lado += 2) {
+				// ojos
+				model = glm::translate(mBallena, glm::vec3(lado * 0.95f, 0.15f, 2.2f));
+				model = glm::scale(model, glm::vec3(0.14f, 0.14f, 0.14f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = glm::vec3(0.05f, 0.05f, 0.08f);
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[ESFERA]->RenderMeshModel();
+				// aletas pectorales: giran en el hombro como remos
+				aletaBallena = glm::translate(mBallena, glm::vec3(lado * 1.0f, -0.35f, 1.0f));
+				aletaBallena = glm::rotate(aletaBallena, glm::radians(lado * (-20.0f + 18.0f * sin(faseBallena + 1.0f))), glm::vec3(0.0f, 0.0f, 1.0f));
+				model = glm::translate(aletaBallena, glm::vec3(lado * 0.9f, 0.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(1.1f, 0.1f, 0.5f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = colBallena[i] * 0.85f;
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[ESFERA]->RenderMeshModel();
+			}
+			// cola: sale de la parte de atras y sube y baja; la aleta caudal es su hija y va un poco atrasada
+			colaBallena = glm::translate(mBallena, glm::vec3(0.0f, 0.1f, -2.6f));
+			colaBallena = glm::rotate(colaBallena, glm::radians(15.0f * sin(faseBallena)), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::rotate(colaBallena, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));	// el cono apunta hacia atras
+			model = glm::scale(model, glm::vec3(0.6f, 1.8f, 0.45f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colBallena[i];
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CONO]->RenderMeshModel();
+			model = glm::translate(colaBallena, glm::vec3(0.0f, 0.0f, -1.7f));
+			model = glm::rotate(model, glm::radians(20.0f * sin(faseBallena - 0.8f)), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(2.1f, 0.12f, 0.7f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colBallena[i] * 0.9f;
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			if (i >= 1) {	// la juvenil y la adulta tienen manchas que brillan en el lomo; la adulta tiene mas
+				for (int k = 0; k < (i == 2 ? 4 : 2); k++) {
+					model = glm::translate(mBallena, glm::vec3(0.0f, 0.85f - 0.05f * k, 1.2f - 0.9f * k));
+					model = glm::scale(model, glm::vec3(0.22f, 0.12f, 0.22f));
+					glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+					color = glm::vec3(0.6f, 1.6f, 1.8f) * (0.75f + 0.25f * sin(2.0f * now + k));
+					glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+					meshListModel[ESFERA]->RenderMeshModel();
+				}
+			}
+		}
+
+		// ---- AVES DE FUEGO (especie del espacio): polluelo, joven y adulta vuelan en circulos alrededor del planeta de lava ----
+		// jerarquia con primitivas: el cuerpo es el padre de la cabeza, el pico, la cola y las alas; cada ala tiene dos partes
+		// (la parte de afuera es hija de la de adentro) y aletean con un seno. El color mayor a 1 las hace ver encendidas
+		plumasTexture.UseTexture();
+		for (int i = 0; i < 3; i++) {
+			sgnAve = velAve[i] > 0.0f ? 1.0f : -1.0f;
+			angAve = velAve[i] * now + i * 2.1f;
+			pAve = CENTRO_AVES + glm::vec3(radioAve[i] * cos(angAve), 3.0f * sin(0.9f * now + i) + (i - 1) * 4.0f, radioAve[i] * sin(angAve));
+			rumboAve = atan2(-sin(angAve) * sgnAve, cos(angAve) * sgnAve);	// mira hacia donde vuela
+			faseAve = (i == 0 ? 14.0f : (i == 1 ? 10.0f : 7.0f)) * now;	// el polluelo aletea mas rapido
+			posNombre[16 + i] = pAve + glm::vec3(0.0f, 1.2f * escAve[i] + 1.5f, 0.0f);
+			mAve = glm::translate(glm::mat4(1.0f), pAve);
+			mAve = glm::rotate(mAve, rumboAve, glm::vec3(0.0f, 1.0f, 0.0f));
+			mAve = glm::rotate(mAve, glm::radians(-sgnAve * 20.0f), glm::vec3(0.0f, 0.0f, 1.0f));	// se inclina hacia adentro de la vuelta
+			mAve = glm::scale(mAve, glm::vec3(escAve[i], escAve[i], escAve[i]));
+			// cuerpo (padre)
+			model = glm::scale(mAve, glm::vec3(0.5f, 0.5f, 0.95f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.8f, 0.7f, 0.15f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			// cabeza y pico
+			model = glm::translate(mAve, glm::vec3(0.0f, 0.3f, 0.95f));
+			model = glm::scale(model, glm::vec3(0.33f, 0.33f, 0.33f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(2.0f, 1.1f, 0.3f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			model = glm::translate(mAve, glm::vec3(0.0f, 0.25f, 1.25f));
+			model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.1f, 0.35f, 0.1f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.0f, 0.85f, 0.3f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CONO]->RenderMeshModel();
+			// alas: la parte de adentro gira en el hombro; la de afuera (joven y adulta) es su hija y gira con un poco de retraso
+			for (int lado = -1; lado <= 1; lado += 2) {
+				alaAve = glm::translate(mAve, glm::vec3(lado * 0.4f, 0.15f, 0.1f));
+				alaAve = glm::rotate(alaAve, glm::radians(lado * 35.0f * sin(faseAve)), glm::vec3(0.0f, 0.0f, 1.0f));
+				model = glm::translate(alaAve, glm::vec3(lado * 0.8f, 0.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(0.85f, 0.07f, 0.45f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = glm::vec3(1.9f, 1.0f, 0.2f);
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[ESFERA]->RenderMeshModel();
+				if (i >= 1) {
+					alaAve = glm::translate(alaAve, glm::vec3(lado * 1.6f, 0.0f, 0.0f));
+					alaAve = glm::rotate(alaAve, glm::radians(lado * 25.0f * sin(faseAve - 0.6f)), glm::vec3(0.0f, 0.0f, 1.0f));
+					model = glm::translate(alaAve, glm::vec3(lado * 0.65f, 0.0f, -0.1f));
+					model = glm::scale(model, glm::vec3(0.7f, 0.05f, 0.35f));
+					glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+					color = glm::vec3(2.0f, 0.5f, 0.1f);
+					glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+					meshListModel[ESFERA]->RenderMeshModel();
+				}
+			}
+			// cola de fuego: el polluelo una pluma, la joven dos y la adulta tres largas que ondulan
+			for (int k = 0; k < i + 1; k++) {
+				model = glm::translate(mAve, glm::vec3((k - i * 0.5f) * 0.25f, 0.05f, -0.85f));
+				model = glm::rotate(model, glm::radians(-100.0f + 10.0f * sin(4.0f * now + k)), glm::vec3(1.0f, 0.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(0.18f, i == 2 ? 2.2f : 1.2f, 0.12f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = glm::vec3(2.0f, 0.4f + 0.2f * k, 0.1f);
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[CONO]->RenderMeshModel();
+			}
+		}
+
 		// ---- CE1 a CE5 cuerpos celestes: planeta gaseoso con anillo, luna de hielo, planeta de lava, planeta alien y una luna de roca ----
 		// lejos de los planetas para que no se encimen: el gaseoso al fondo, detras de la estacion
 		posCuerpo[0] = glm::vec3(-40, 62, -175);
@@ -2227,9 +2663,9 @@ int main()
 		//=====================================================================================
 		cMF = C_FORJA;
 		// MF-01 torres de refineria x3: chimenea de Kenney (Space Kit, CC0) con un generador al lado
-		refineria[0] = glm::vec3(22.4f, 0, -8.4f);
-		refineria[1] = glm::vec3(29.4f, 0, 1.4f);
-		refineria[2] = glm::vec3(21, 0, 11.2f);
+		refineria[0] = SEP_MF * glm::vec3(22.4f, 0, -8.4f);
+		refineria[1] = SEP_MF * glm::vec3(29.4f, 0, 1.4f);
+		refineria[2] = SEP_MF * glm::vec3(21, 0, 11.2f);
 		for (int i = 0; i < 3; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + refineria[i]);
@@ -2267,8 +2703,8 @@ int main()
 			metalTexture.UseTexture();
 			meshListModel[CILINDRO]->RenderMeshModel();
 		}
-		tanque[0] = glm::vec3(35, 0, -16.8f);
-		tanque[1] = glm::vec3(35, 0, 16.8f);
+		tanque[0] = SEP_MF * glm::vec3(35, 0, -16.8f);
+		tanque[1] = SEP_MF * glm::vec3(35, 0, 16.8f);
 		for (int i = 0; i < 2; i++) {
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + tanque[i]);
@@ -2293,12 +2729,12 @@ int main()
 		}
 
 		// MF-03 grind rails x2: curvas cuadraticas (A -> control C -> B) hechas con tramos de cilindro
-		rielA[0] = glm::vec3(-33.6f, 1.6f, -11.2f);
-		rielA[1] = glm::vec3(5.6f, 1.6f, 30.8f);
-		rielC[0] = glm::vec3(-25.2f, 1.6f, -36.4f);
-		rielC[1] = glm::vec3(25.2f, 1.6f, 39.2f);
-		rielB[0] = glm::vec3(-8.4f, 1.6f, -22.4f);
-		rielB[1] = glm::vec3(33.6f, 1.6f, 18.2f);
+		rielA[0] = SEP_MF * glm::vec3(-33.6f, 1.6f, -11.2f);
+		rielA[1] = SEP_MF * glm::vec3(5.6f, 1.6f, 30.8f);
+		rielC[0] = SEP_MF * glm::vec3(-25.2f, 1.6f, -36.4f);
+		rielC[1] = SEP_MF * glm::vec3(25.2f, 1.6f, 39.2f);
+		rielB[0] = SEP_MF * glm::vec3(-8.4f, 1.6f, -22.4f);
+		rielB[1] = SEP_MF * glm::vec3(33.6f, 1.6f, 18.2f);
 		for (int r = 0; r < 2; r++) {
 			for (int k = 0; k < 30; k++) {
 				t1 = k / 30.0f;
@@ -2334,11 +2770,11 @@ int main()
 				t8 = 0.15f + 0.23f * k;
 				tornillo2[r * 4 + k] = (1 - t8) * (1 - t8) * rielA[r] + 2 * (1 - t8) * t8 * rielC[r] + t8 * t8 * rielB[r] + glm::vec3(0.0f, -0.4f, 0.0f);
 			}
-		tornillo2[8] = glm::vec3(2.8f, 1.2f, -5.6f); tornillo2[9] = glm::vec3(7, 1.2f, -1.4f); tornillo2[10] = glm::vec3(-1.4f, 1.2f, -9.8f); tornillo2[11] = glm::vec3(11.2f, 1.2f, -7);
+		tornillo2[8] = SEP_MF * glm::vec3(2.8f, 1.2f, -5.6f); tornillo2[9] = SEP_MF * glm::vec3(7, 1.2f, -1.4f); tornillo2[10] = SEP_MF * glm::vec3(-1.4f, 1.2f, -9.8f); tornillo2[11] = SEP_MF * glm::vec3(11.2f, 1.2f, -7);
 		for (int i = 0; i < 12; i++) {
 			// si el avatar pasa junto al tornillo, se recoge y desaparece 8 s
 			if (tornilloOculto[i] > 0.0f) { tornilloOculto[i] -= dt; continue; }
-			if (modoCamara == 1 && glm::distance(avatarPos + glm::vec3(0.0f, 1.2f, 0.0f), cMF + tornillo2[i]) < 3.5f) { tornilloOculto[i] = 8.0f; continue; }
+			if (modoCamara == 1 && glm::distance(avatarPos + glm::vec3(0.0f, 1.2f, 0.0f), cMF + tornillo2[i]) < 3.5f) { tornilloOculto[i] = 8.0f; Audio::Reproducir("tornillo", false); continue; }
 			y2 = tornillo2[i].y + 0.25f * sin(2.0f * PI * now / 2.0f + i * 0.7f);
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + glm::vec3(tornillo2[i].x, y2 - 0.5f, tornillo2[i].z));	// el modelo nace en su base, lo bajo medio tornillo
@@ -2362,7 +2798,7 @@ int main()
 		caja[7] = glm::vec3(1.4f, 1.1f, 3.6f);
 		for (int i = 0; i < 8; i++) {
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cMF + caja[i]);	// el modelo nace en su base
+			model = glm::translate(model, cMF + caja[i] + (SEP_MF - glm::vec3(1.0f)) * (caja[i].x < -5.0f ? glm::vec3(-12.6f, 0.0f, 3.5f) : glm::vec3(1.6f, 0.0f, 3.8f)));	// el modelo nace en su base
 			model = glm::rotate(model, glm::radians(i * 23.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::scale(model, glm::vec3(0.046f, 0.046f, 0.046f));
 			model = glm::translate(model, glm::vec3(0.0f, 12.0f, 0.0f));	// el OBJ esta centrado en el origen: se regresa a su base para que quede donde estaba
@@ -2376,7 +2812,7 @@ int main()
 		}
 		// MF-06 vendedor Gadgetron (modelo del juego, mide 66 de alto, lo dejo en ~6)
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-5.6f, 0.0f, 2.8f));
+		model = glm::translate(model, cMF + SEP_MF * glm::vec3(-5.6f, 0.0f, 2.8f));
 		model = glm::rotate(model, glm::radians(giroVendedor), glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.09f, 0.09f, 0.09f));
 		model = glm::translate(model, glm::vec3(0.0f, 33.2567f, 0.0f));	// el OBJ esta centrado en el origen: se regresa a su base para que quede donde estaba
@@ -2430,7 +2866,7 @@ int main()
 
 		// MF-08 plataformas flotantes x3 afuera de la orilla sur: suben y bajan con un seno y giran despacio
 		for (int i = 0; i < 3; i++) {
-			p = cMF + glm::vec3(-14.0f + 14.0f * i, 2.5f + 0.9f * sin(0.8f * now + i * 2.0f), 46.0f + (i == 1 ? 5.0f : 0.0f));
+			p = cMF + SEP_MF * glm::vec3(-14.0f + 14.0f * i, 2.5f + 0.9f * sin(0.8f * now + i * 2.0f), 40.0f + (i == 1 ? 5.0f : 0.0f));	// mas adentro para que no salgan del planeta
 			model = glm::mat4(1.0);
 			model = glm::translate(model, p);
 			model = glm::rotate(model, glm::radians(10.0f * now + i * 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -2462,17 +2898,39 @@ int main()
 			meshListModel[ESFERA]->RenderMeshModel();
 		}
 
-		// MF-09 Blargs x4 trabajando en la refineria (jerarquia: cadera -> torso -> cabeza con pico; brazos que martillan; piernas)
-		blarg[0] = glm::vec3(14, 0, -14);
-		blarg[1] = glm::vec3(15.4f, 0, 4.2f);
-		blarg[2] = glm::vec3(28, 0, 18.2f);
-		blarg[3] = glm::vec3(33.6f, 0, -5.6f);
+		// MF-09 Blargs x4 trabajando en la refineria (jerarquia: cadera -> torso -> cabeza con pico; brazos que martillan; piernas);
+		// cada uno martilla una pieza al rojo sobre su yunque
+		blarg[0] = SEP_MF * glm::vec3(14, 0, -14);
+		blarg[1] = SEP_MF * glm::vec3(15.4f, 0, 4.2f);
+		blarg[2] = SEP_MF * glm::vec3(28, 0, 18.2f);
+		blarg[3] = SEP_MF * glm::vec3(33.6f, 0, -5.6f);
 		giroBlarg[0] = 60.0f;
 		giroBlarg[1] = 90.0f;
 		giroBlarg[2] = 160.0f;
 		giroBlarg[3] = -90.0f;
 		for (int i = 0; i < 4; i++) {
 			golpe = 45.0f * sin(5.0f * now + i * 1.3f);	// el brazo derecho sube y baja con la llave
+			posNombre[3 + i] = cMF + blarg[i] + glm::vec3(0.0f, 4.6f, 0.0f);
+			// yunque frente a la mano derecha, con una pieza al rojo que brilla cuando cae el golpe (antes martillaban al aire)
+			chispa = glm::max(0.0f, sin(5.0f * now + i * 1.3f));
+			chispa = chispa * chispa * chispa * chispa;
+			model = glm::translate(glm::mat4(1.0), cMF + blarg[i]);
+			model = glm::rotate(model, glm::radians(giroBlarg[i]), glm::vec3(0.0f, 1.0f, 0.0f));
+			modelaux = model;
+			model = glm::translate(modelaux, glm::vec3(0.85f, 0.65f, 0.85f));
+			model = glm::scale(model, glm::vec3(0.75f, 1.3f, 0.75f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.3f, 0.3f, 0.33f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			metalTexture.UseTexture();
+			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
+			meshListModel[CUBO]->RenderMeshModel();
+			model = glm::translate(modelaux, glm::vec3(0.85f, 1.36f, 0.85f));
+			model = glm::scale(model, glm::vec3(0.45f, 0.12f, 0.3f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.6f, 0.55f, 0.1f) + glm::vec3(1.2f, 1.0f, 0.6f) * chispa;
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CUBO]->RenderMeshModel();
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + blarg[i] + glm::vec3(0.0f, 1.1f, 0.0f));
 			model = glm::rotate(model, glm::radians(giroBlarg[i]), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -2484,10 +2942,11 @@ int main()
 				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 				color = glm::vec3(0.25f, 0.28f, 0.36f);	// overol
 				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-				plainTexture.UseTexture();
+				telaTexture.UseTexture();
 				concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
 				meshListModel[CILINDRO]->RenderMeshModel();
 			}
+			telaTexture.UseTexture();
 			model = modelaux;	// torso
 			model = glm::translate(model, glm::vec3(0.0f, 0.6f, 0.0f));
 			modelaux2 = model;
@@ -2496,6 +2955,7 @@ int main()
 			color = glm::vec3(0.3f, 0.34f, 0.44f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 			meshListModel[ESFERA]->RenderMeshModel();
+			escamasTexture.UseTexture();	// cabeza y brazos con piel de escamas
 			model = modelaux2;	// cabeza
 			model = glm::translate(model, glm::vec3(0.0f, 1.2f, 0.1f));
 			cabeza = model;
@@ -2544,23 +3004,25 @@ int main()
 			}
 		}
 
-		// MF-10 Protopets x3 en el oeste: dos normales y uno mutado (mas grande); brincan con |sin| y se aplastan al caer
-		protopet[0] = glm::vec3(-28, 0, -1.4f);
-		protopet[1] = glm::vec3(-32.2f, 0, 5.6f);
-		protopet[2] = glm::vec3(-25.2f, 0, 9.8f);
+		// MF-10 Protopets: linea evolutiva de una especie en 3 etapas (cria sin cuernos, Protopet y mutado con dientes);
+		// cada etapa es mas grande, cambia de color y brinca mas lento; brincan con |sin| y se aplastan al caer
+		protopet[0] = SEP_MF * glm::vec3(-28, 0, -1.4f);
+		protopet[1] = SEP_MF * glm::vec3(-32.2f, 0, 5.6f);
+		protopet[2] = SEP_MF * glm::vec3(-25.2f, 0, 9.8f);
 		for (int i = 0; i < 3; i++) {
 			mutado = i == 2;
-			tam = mutado ? 1.8f : 0.8f;
-			brinco = fabs(sin(3.5f * now + i * 1.7f));
+			tam = i == 0 ? 0.55f : (i == 1 ? 1.0f : 1.8f);	// cria, Protopet y mutado
+			brinco = fabs(sin((i == 0 ? 5.5f : 3.5f) * now + i * 1.7f));	// la cria brinca mas rapido
+			posNombre[i] = cMF + protopet[i] + glm::vec3(0.0f, tam * 3.0f + 1.2f, 0.0f);	// su nombre flota arriba
 			model = glm::mat4(1.0);
 			model = glm::translate(model, cMF + protopet[i] + glm::vec3(0.0f, tam * (1.0f + 0.9f * brinco), 0.0f));
 			model = glm::rotate(model, glm::radians(30.0f * sin(0.7f * now + i)), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::scale(model, glm::vec3(tam, tam * (0.85f + 0.15f * brinco), tam));
 			modelaux = model;
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-			color = mutado ? glm::vec3(0.6f, 0.2f, 0.45f) : glm::vec3(0.98f, 0.66f, 0.2f);
+			color = mutado ? glm::vec3(0.6f, 0.2f, 0.45f) : (i == 0 ? glm::vec3(1.0f, 0.86f, 0.45f) : glm::vec3(0.98f, 0.66f, 0.2f));
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			plainTexture.UseTexture();
+			pielTexture.UseTexture();
 			roca.UseMaterial(uniformSpecularIntensity, uniformShininess);
 			meshListModel[ESFERA]->RenderMeshModel();
 			for (int lado = -1; lado <= 1; lado += 2) {
@@ -2577,6 +3039,7 @@ int main()
 				color = glm::vec3(0.05f, 0.05f, 0.05f);
 				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 				meshListModel[ESFERA]->RenderMeshModel();
+				if (i == 0) continue;	// a la cria todavia no le salen cuernos
 				model = modelaux;	// cuernito
 				model = glm::translate(model, glm::vec3(lado * 0.45f, 0.75f, 0.0f));
 				model = glm::rotate(model, glm::radians(-lado * 25.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -2602,19 +3065,19 @@ int main()
 		for (int k = 0; k < 22; k++) {
 			a6 = k * 2.0f * PI / 22.0f;
 			model = glm::mat4(1.0);
-			model = glm::translate(model, cMF + glm::vec3(-28.7f + 8.5f * cos(a6), 0.0f, 4.2f + 8.5f * sin(a6)));
+			model = glm::translate(model, cMF + SEP_MF * glm::vec3(-28.7f + 8.5f * cos(a6), 0.0f, 4.2f + 8.5f * sin(a6)));
 			model = glm::scale(model, glm::vec3(0.2f, 1.2f, 0.2f));
 			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 			color = glm::vec3(0.5f, 0.45f, 0.35f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
-			plainTexture.UseTexture();
+			metalTexture.UseTexture();
 			metalPintado.UseMaterial(uniformSpecularIntensity, uniformShininess);
 			meshListModel[CILINDRO]->RenderMeshModel();
 		}
 
 		// MF-12 garage de Ratchet: caja con techo de medio cilindro, porton abierto y franjas naranjas
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-16.8f, 0.0f, 23.8f));
+		model = glm::translate(model, cMF + SEP_MF * glm::vec3(-16.8f, 0.0f, 23.8f));
 		modelaux = model;
 		model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(8.0f, 4.0f, 7.0f));
@@ -2653,7 +3116,7 @@ int main()
 		// MF-11 figura de Ratchet y Clank en su pedestal; con H despega y vuela con el Heli-Pack (KF1) y regresa al pedestal
 		pedestal = glm::vec3(2.8f, 0.0f, 19.6f);
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + pedestal);
+		model = glm::translate(model, cMF + SEP_MF * pedestal);
 		model = glm::scale(model, glm::vec3(2.6f, 0.6f, 2.6f));
 		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 		color = glm::vec3(0.95f, 0.75f, 0.15f);
@@ -2663,7 +3126,7 @@ int main()
 		meshListModel[CILINDRO]->RenderMeshModel();
 		volando = kfReproduciendo || (kfCuadro > 0 && kfCuadro < 8);
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + pedestal + kfActual + glm::vec3(0.0f, 0.6f, 0.0f));
+		model = glm::translate(model, cMF + SEP_MF * (pedestal + kfActual) + glm::vec3(0.0f, 0.6f, 0.0f));
 		if (!volando) giroPedestal += 25.0f * dt;
 		model = glm::rotate(model, glm::radians(kfGiroActual + giroBaseRatchet + giroPedestal), glm::vec3(0.0f, 1.0f, 0.0f));
 		if (volando) model = glm::rotate(model, glm::radians(8.0f * sin(3.0f * now)), glm::vec3(1.0f, 0.0f, 0.0f));	// se balancea en el aire
@@ -2701,7 +3164,7 @@ int main()
 			}
 		// tornillo de oro (modelo del juego): flota y gira sobre el centro, con su luz dorada como pista de que es especial
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-2.0f, 2.5f + 0.4f * sin(1.5f * now), -12.0f));
+		model = glm::translate(model, cMF + SEP_MF * glm::vec3(-2.0f, 2.5f + 0.4f * sin(1.5f * now), -12.0f));
 		model = glm::rotate(model, glm::radians(60.0f * now), glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.08f, 0.08f, 0.08f));	// mide 26.5 de alto, queda de ~2
 		model = glm::translate(model, glm::vec3(0.0f, 13.408f, 0.0f));	// el OBJ esta centrado en el origen: se regresa a su base para que quede donde estaba
@@ -2712,7 +3175,7 @@ int main()
 		tornilloOro.RenderModel();
 		// la Aphelion (nave de Ratchet, modelo del juego) estacionada en el aire junto a la orilla suroeste; sube y baja despacio
 		model = glm::mat4(1.0);
-		model = glm::translate(model, cMF + glm::vec3(-27.0f, 5.0f + 0.6f * sin(0.7f * now), 36.0f));
+		model = glm::translate(model, cMF + SEP_MF * glm::vec3(-27.0f, 5.0f + 0.6f * sin(0.7f * now), 36.0f));
 		model = glm::rotate(model, glm::radians(40.0f + 4.0f * sin(0.5f * now)), glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.11f, 0.11f, 0.11f));	// mide 89 de ancho, queda de ~10
 		model = glm::translate(model, glm::vec3(0.0f, 30.5494f, -2.3243f));	// el OBJ esta centrado en el origen: se regresa a su base para que quede donde estaba
@@ -2936,6 +3399,104 @@ int main()
 			color = glm::vec3(1.0f, 1.0f, 1.0f);
 			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
 			npcHR[i]->RenderModel();
+		}
+
+		// ---- MOA (NPCs de Reach): linea evolutiva del ave nativa de Reach, cria -> juvenil -> adulto ----
+		// jerarquia hecha con primitivas: el cuerpo es el padre de las patas, la cola, las alas y el cuello; del cuello cuelga la cabeza
+		// y de la cabeza el pico, los ojos y la cresta. La cria brinca junto al nido, el juvenil y el adulto caminan en circulos y picotean
+		for (int i = 0; i < 3; i++) {
+			radioMoa = i == 0 ? 0.0f : (i == 1 ? 3.5f : 6.0f);
+			sgnMoa = i == 1 ? 1.0f : -1.0f;
+			angMoa = sgnMoa * (i == 1 ? 0.45f : 0.3f) * now + i * 2.0f;
+			pMoa = CENTRO_MOA + glm::vec3(radioMoa * cos(angMoa), 0.0f, radioMoa * sin(angMoa));
+			if (i == 0) pMoa += glm::vec3(1.5f, 0.0f, 0.0f);	// la cria se queda junto al nido
+			rumboMoa = i == 0 ? 0.5f * sin(0.9f * now) : atan2(-sin(angMoa) * sgnMoa, cos(angMoa) * sgnMoa);	// mira hacia donde camina
+			saltoMoa = i == 0 ? 0.6f * fabs(sin(4.0f * now)) : 0.0f;
+			faseMoa = 5.0f * now;
+			picoMoa = i == 0 ? 0.0f : 45.0f * glm::max(0.0f, sin(0.8f * now + 1.7f * i) - 0.6f) / 0.4f;	// de vez en cuando baja la cabeza a picotear
+			posNombre[10 + i] = pMoa + glm::vec3(0.0f, 4.6f * escMoa[i] + 1.4f, 0.0f);	// su nombre flota arriba
+			mMoa = glm::translate(glm::mat4(1.0f), pMoa + glm::vec3(0.0f, saltoMoa, 0.0f));
+			mMoa = glm::rotate(mMoa, rumboMoa, glm::vec3(0.0f, 1.0f, 0.0f));
+			mMoa = glm::scale(mMoa, glm::vec3(escMoa[i], escMoa[i], escMoa[i]));
+			plumasTexture.UseTexture();	// plumaje tenido con el color de cada etapa
+			roca.UseMaterial(uniformSpecularIntensity, uniformShininess);
+			// patas largas: giran en la cadera y se alternan al caminar (la cria las tiene quietas porque brinca)
+			for (int lado = -1; lado <= 1; lado += 2) {
+				model = glm::translate(mMoa, glm::vec3(lado * 0.3f, 1.7f, 0.0f));
+				model = glm::rotate(model, glm::radians(i == 0 ? 0.0f : 25.0f * sin(faseMoa + (lado > 0 ? 0.0f : PI))), glm::vec3(1.0f, 0.0f, 0.0f));
+				model = glm::translate(model, glm::vec3(0.0f, -1.7f, 0.0f));
+				model = glm::scale(model, glm::vec3(0.11f, 1.7f, 0.11f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = glm::vec3(0.85f, 0.55f, 0.2f);
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[CILINDRO]->RenderMeshModel();
+			}
+			// cuerpo (padre de todo lo demas)
+			model = glm::translate(mMoa, glm::vec3(0.0f, 2.2f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.75f, 0.6f, 1.0f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colMoa[i];
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+			// cola: cono que apunta hacia atras y se mueve un poco
+			model = glm::translate(mMoa, glm::vec3(0.0f, 2.3f, -0.85f));
+			model = glm::rotate(model, glm::radians(-110.0f + 8.0f * sin(3.0f * now + i)), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.35f, 0.75f, 0.25f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colMoa[i] * 0.75f;
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CONO]->RenderMeshModel();
+			if (i >= 1) {	// alas cortas (el Moa no vuela): se abren un poco al caminar
+				for (int lado = -1; lado <= 1; lado += 2) {
+					model = glm::translate(mMoa, glm::vec3(lado * 0.7f, 2.3f, -0.1f));
+					model = glm::rotate(model, glm::radians(lado * (15.0f + 10.0f * sin(faseMoa))), glm::vec3(0.0f, 0.0f, 1.0f));
+					model = glm::scale(model, glm::vec3(0.12f, 0.35f, 0.65f));
+					glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+					color = colMoa[i] * 0.85f;
+					glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+					meshListModel[ESFERA]->RenderMeshModel();
+				}
+			}
+			// cuello: sale del pecho inclinado hacia adelante; al picotear baja
+			cuelloMoa = glm::translate(mMoa, glm::vec3(0.0f, 2.45f, 0.7f));
+			cuelloMoa = glm::rotate(cuelloMoa, glm::radians(20.0f + picoMoa), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::scale(cuelloMoa, glm::vec3(0.14f, i == 0 ? 0.8f : 1.3f, 0.14f));	// la cria tiene el cuello corto
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = colMoa[i];
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CILINDRO]->RenderMeshModel();
+			// cabeza (hija del cuello) con pico, ojos y, en el adulto, cresta
+			cabezaMoa = glm::translate(cuelloMoa, glm::vec3(0.0f, i == 0 ? 0.8f : 1.3f, 0.0f));
+			cabezaMoa = glm::rotate(cabezaMoa, glm::radians(-20.0f - picoMoa), glm::vec3(1.0f, 0.0f, 0.0f));	// la cabeza se mantiene derecha
+			model = glm::scale(cabezaMoa, glm::vec3(0.3f, 0.28f, 0.38f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[ESFERA]->RenderMeshModel();
+			model = glm::translate(cabezaMoa, glm::vec3(0.0f, -0.02f, 0.3f));	// pico: cono que apunta hacia adelante
+			model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.11f, 0.45f, 0.11f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.9f, 0.62f, 0.25f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CONO]->RenderMeshModel();
+			for (int lado = -1; lado <= 1; lado += 2) {	// ojos
+				model = glm::translate(cabezaMoa, glm::vec3(lado * 0.2f, 0.08f, 0.18f));
+				model = glm::scale(model, glm::vec3(0.07f, 0.07f, 0.07f));
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+				color = glm::vec3(0.05f, 0.05f, 0.05f);
+				glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+				meshListModel[ESFERA]->RenderMeshModel();
+			}
+			if (i == 2) {	// el adulto tiene una cresta de tres plumas
+				for (int k = -1; k <= 1; k++) {
+					model = glm::translate(cabezaMoa, glm::vec3(0.0f, 0.2f, -0.05f + 0.12f * k));
+					model = glm::rotate(model, glm::radians(-25.0f * k - 15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+					model = glm::scale(model, glm::vec3(0.07f, 0.45f, 0.07f));
+					glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+					color = glm::vec3(0.75f, 0.25f, 0.15f);
+					glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+					meshListModel[CONO]->RenderMeshModel();
+				}
+			}
 		}
 		// puesto de control: poste con la pluma (rayas rojas y blancas) que sube y baja con J; el apoyo recibe la punta
 		concreto.UseMaterial(uniformSpecularIntensity, uniformShininess);
@@ -3359,6 +3920,7 @@ int main()
 			cuerpoYVen = i == 0 ? 1.0f : 1.9f;	// la larva va pegada al piso, los otros se levantan sobre sus patas
 			faseVen = 4.0f * now;
 			mVen = glm::translate(glm::mat4(1.0f), pVen);
+			posNombre[7 + i] = pVen + glm::vec3(0.0f, (cuerpoYVen + 1.8f) * escVen[i] + 0.8f, 0.0f);
 			mVen = glm::rotate(mVen, rumboVen, glm::vec3(0.0f, 1.0f, 0.0f));
 			mVen = glm::scale(mVen, glm::vec3(escVen[i], escVen[i], escVen[i]));
 			rocaTexture.UseTexture();	// la piel lleva textura de roca con tinte
@@ -3667,6 +4229,37 @@ int main()
 
 
 
+		// ---- plasma de las naves: azul del Arwing y verde de los Wolfen; la misma malla del cohete colgando de cada tobera hacia atras ----
+		for (int pasoColor = 0; pasoColor < 2; pasoColor++) {	// primero todas las azules y luego las verdes, para cambiar de textura solo una vez
+			if (pasoColor == 0) plasmaTexture.UseTexture(); else plasmaVerdeTexture.UseTexture();
+			for (int i = 0; i < MAX_PLASMA_NAVE; i++) {
+				if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA || plasmaNaveVerde[i] != (pasoColor == 1)) continue;
+				vidaP = plasmaNaveEdad[i] / PLASMA_NAVE_VIDA;	// 0 nace, 1 muere
+				tamP = plasmaNaveTam[i] * (1.0f + 1.5f * vidaP);	// el largo se estira
+				color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - vidaP);	// y se desvanece
+				glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+				model = glm::translate(plasmaNaveM[i], glm::vec3(0.0f, -0.5f * tamP, 0.0f));
+				model = glm::scale(model, glm::vec3(0.5f * plasmaNaveTam[i] * (1.0f + 0.6f * vidaP), tamP, 0.5f * plasmaNaveTam[i] * (1.0f + 0.6f * vidaP)));	// el ancho crece menos que el largo: los dos chorros no se funden
+				glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+				meshListModel[PLASMA]->RenderMeshModel();
+			}
+		}
+		// brillo del plasma: manchas de luz que siempre miran a la camara; asi el plasma se ve desde atras (cuando pilotas), donde los planos del chorro quedan de canto
+		giroCamara = glm::transpose(glm::mat4(glm::mat3(vista)));	// deshace el giro de la camara
+		brilloPlasmaTexture.UseTexture();
+		for (int i = 0; i < MAX_PLASMA_NAVE; i++) {
+			if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA) continue;
+			vidaP = plasmaNaveEdad[i] / PLASMA_NAVE_VIDA;	// 0 nace, 1 muere
+			color = (plasmaNaveVerde[i] ? glm::vec3(0.35f, 1.0f, 0.45f) : glm::vec3(0.35f, 0.65f, 1.0f)) * (0.9f * (1.0f - vidaP) * (1.0f - vidaP));
+			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+			tamP = 0.55f * plasmaNaveTam[i] * (1.0f + vidaP);
+			model = glm::translate(glm::mat4(1.0), glm::vec3(plasmaNaveM[i][3]));	// el origen de la particula es su tobera
+			model = model * giroCamara;
+			model = glm::scale(model, glm::vec3(tamP, tamP, tamP));
+			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[HUMO]->RenderMeshModel();
+		}
+
 		offsetEfecto = glm::vec2(0.0f, 0.0f);
 		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
 		// ---- AC4 escudos de energia de Reach: pulsan cada 2 s ----
@@ -3737,6 +4330,36 @@ int main()
 		}
 		offsetEfecto = glm::vec2(0.0f, 0.0f);
 		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
+		// ---- KF-EST estrella fugaz: un punto brillante y una estela de 10 esferas que se hacen chicas y transparentes hacia atras ----
+		if (estBrilloAct > 0.01f) {
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			plainTexture.UseTexture();
+			for (int k = 0; k < 10; k++) {
+				glUniform1f(uniformAlphaEfecto, estBrilloAct * (1.0f - k / 10.0f));
+				color = glm::vec3(1.0f, 0.95f - 0.04f * k, 0.8f - 0.06f * k);
+				glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+				model = glm::translate(glm::mat4(1.0), estAct - estDir * (2.2f * k));
+				model = glm::scale(model, glm::vec3(1.6f - 0.13f * k, 1.6f - 0.13f * k, 1.6f - 0.13f * k));
+				glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+				meshListModel[ESFERA]->RenderMeshModel();
+			}
+		}
+		// ---- NOMBRES de las especies: un cuadro con su nombre flota arriba de cada criatura y siempre mira a la camara ----
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glUniform1f(uniformAlphaEfecto, 1.0f);
+		color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+		for (int i = 0; i < 19; i++) {
+			if (glm::distance(camPos, posNombre[i]) > 80.0f) continue;	// de lejos ya no se lee
+			texNombre = i < 3 ? i : (i < 7 ? 3 : i - 3);	// los 4 Blargs comparten el mismo nombre; Venomianos 4-6, Moa 7-9, ballenas 10-12 y aves 13-15
+			nombreTexture[texNombre].UseTexture();
+			model = glm::translate(glm::mat4(1.0), posNombre[i]);
+			model = glm::rotate(model, atan2(camPos.x - posNombre[i].x, camPos.z - posNombre[i].z), glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(4.8f, 1.2f, 1.0f));	// la textura es de 512 x 128 (4 a 1)
+			model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 0.0f));	// el cuadro va de 0 a 1: asi queda centrado
+			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[CUADRO]->RenderMeshModel();
+		}
 		glDepthMask(GL_TRUE);
 		glDisable(GL_BLEND);
 
@@ -3758,7 +4381,7 @@ int main()
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			margen = 0.015f * anchoVentana;
 			ancho = menuAbierto ? 0.3f * anchoVentana : 0.17f * anchoVentana;
-			altoMenu[0] = 609.0f;
+			altoMenu[0] = 669.0f;
 			altoMenu[1] = 729.0f;
 			altoMenu[2] = 549.0f;
 			altoMenu[3] = 789.0f;	// alto en pixeles de cada panel (todos miden 1024 de ancho)
@@ -3773,9 +4396,70 @@ int main()
 			glEnable(GL_DEPTH_TEST);
 		}
 
+		// AUDIO que depende de donde esta la camara: cada ambiente vale 1 en el centro de su zona y baja a 0 al alejarse
+		volForja = glm::clamp(1.0f - glm::distance(camPos, C_FORJA) / (R_FORJA * 1.5f), 0.0f, 1.0f);
+		volReach = glm::clamp(1.0f - glm::distance(camPos, C_REACH) / (R_REACH * 1.5f), 0.0f, 1.0f);
+		volVenom = glm::clamp(1.0f - glm::distance(camPos, C_VENOM) / (R_VENOM * 1.5f), 0.0f, 1.0f);
+		volEstacion = glm::clamp(1.0f - glm::distance(camPos, C_ESTACION) / 70.0f, 0.0f, 1.0f);
+		Audio::Volumen("ambForja", (int)(900.0f * volForja * volForja));
+		Audio::Volumen("ambReach", (int)(900.0f * volReach * volReach));
+		Audio::Volumen("ambVenom", (int)(900.0f * volVenom * volVenom));
+		Audio::Volumen("ambEstacion", (int)(800.0f * volEstacion * volEstacion));
+		// el vendedor saluda una vez cuando el avatar se le acerca; al alejarse queda listo para saludar otra vez
+		distVendedor = glm::distance(avatarPos, C_FORJA + SEP_MF * glm::vec3(-5.6f, 0.0f, 2.8f));
+		if (modoCamara == 1 && distVendedor < 10.0f && !vendedorSaludo) { vendedorSaludo = true; Audio::Reproducir("vendedor", false); }
+		if (distVendedor > 16.0f) vendedorSaludo = false;
+		// el Heli-Pack zumba solo mientras Ratchet vuela (KF1) y se oye mas fuerte cerca de Mundo Forja
+		if (kfReproduciendo && !heliSonando) { Audio::Reproducir("heli", true); heliSonando = true; }
+		if (!kfReproduciendo && heliSonando) { Audio::Detener("heli"); heliSonando = false; }
+		if (heliSonando) Audio::Volumen("heli", (int)(1000.0f * volForja));
+		// Reach: posiciones iguales a las que se usan al dibujar los vehiculos.
+		posAudioPelican = C_REACH + escalaReach * glm::vec3(12.0f, 1.09193f, 5.0f);
+		posAudioPelican.y += alturaPelican;
+		posAudioWarthog = C_REACH + escalaReach * glm::vec3(
+			centroPatrulla.x + radioPatrulla * cos(anguloWarthog), 1.06914f,
+			centroPatrulla.y + radioPatrulla * sin(anguloWarthog));
+		volPelican = glm::clamp(1.0f - glm::distance(camPos, posAudioPelican) / 95.0f, 0.0f, 1.0f);
+		volWarthog = glm::clamp(1.0f - glm::distance(camPos, posAudioWarthog) / 80.0f, 0.0f, 1.0f);
+		Audio::Volumen("pelican", (int)(850 * volPelican * volPelican));
+		Audio::Volumen("warthog", (int)(750 * volWarthog * volWarthog));
+
+		// Reach: zumbido al acercarse a cualquiera de los dos escudos.
+		distanciaEscudos = glm::min(
+			glm::distance(glm::vec2(avatarPos.x, avatarPos.z), glm::vec2(posAudioEscudo0.x, posAudioEscudo0.z)),
+			glm::distance(glm::vec2(avatarPos.x, avatarPos.z), glm::vec2(posAudioEscudo1.x, posAudioEscudo1.z)));
+		volEscudos = glm::clamp(1.0f - glm::min(glm::distance(camPos, posAudioEscudo0),
+			glm::distance(camPos, posAudioEscudo1)) / 40.0f, 0.0f, 1.0f);
+		Audio::Volumen("escudos", (int)(850 * volEscudos * volEscudos));
+		if (modoCamara == 1 && !camaraLibreAntes && !pilotando &&
+			distanciaEscudos < 12.0f && !escudosSonando) {
+			Audio::Reproducir("escudos", true);
+			escudosSonando = true;
+		}
+		if (escudosSonando && (distanciaEscudos > 16.0f || modoCamara != 1 || camaraLibreAntes || pilotando)) {
+			Audio::Detener("escudos");
+			escudosSonando = false;
+		}
+
+		// Reach: aviso de escudo bajo al acercarse al Jefe Maestro.
+		distanciaJefe = glm::distance(glm::vec2(avatarPos.x, avatarPos.z),
+			glm::vec2(posAudioJefe.x, posAudioJefe.z));
+		volJefe = glm::clamp(1.0f - glm::distance(camPos, posAudioJefe) / 40.0f, 0.0f, 1.0f);
+		Audio::Volumen("jefe", (int)(650 * volJefe * volJefe));
+		if (modoCamara == 1 && !camaraLibreAntes && !pilotando && distanciaJefe < 8.0f && !jefeSonando) {
+			Audio::Reproducir("jefe", true);
+			jefeSonando = true;
+		}
+		if (jefeSonando && (distanciaJefe > 12.0f || modoCamara != 1 || camaraLibreAntes || pilotando)) {
+			Audio::Detener("jefe");
+			jefeSonando = false;
+		}
+
+
 		glUseProgram(0);
 		mainWindow.swapBuffers();
 	}
 
+	Audio::CerrarTodo();
 	return 0;
 }
