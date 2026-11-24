@@ -23,7 +23,7 @@ Audio (clase Audio con miniaudio): soundtrack, un ambiente por planeta y la esta
 solo suenan cuando pasa algo (cohetes, torreta, tornillos, vendedor, Heli-Pack, Pelican, Warthog, escudos, Jefe Maestro, Arwing y Wolfen; estos dos ultimos en audio_nave.cpp).
 Evolucion de especies, cada una en 3 etapas y con su nombre arriba: Protopets (Forja), Moa (Reach), Venomianos (Venom)
 y en el espacio las ballenas espaciales (orbita sobre el sistema) y las aves de fuego (alrededor del planeta de lava).
-Keyframes que corren solos: KF-AST asteroide que cruza el sistema, KF-EST estrella fugaz y KF-SAT satelite que sale de la estacion.
+Keyframes que corren solos: KF-AST asteroide que cruza el sistema, KF-EST tres estrellas fugaces de colores y KF-SAT satelite que sale de la estacion.
 */
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
@@ -1026,14 +1026,19 @@ int main()
 	float astReloj = 0.0f, astF = 0.0f, astGiroAct = 0.0f;
 	int astCuadro = 0;
 	glm::vec3 astAct = astPos[0];
-	// KF-EST estrella fugaz por keyframes: posicion y brillo; cruza el cielo en 5 tramos cortos y espera EST_ESPERA segundos apagada
-	glm::vec3 estPos[6] = { glm::vec3(-160, 175, -130), glm::vec3(-95, 163, -68), glm::vec3(-30, 150, -5),
-		glm::vec3(35, 135, 58), glm::vec3(100, 118, 120), glm::vec3(165, 100, 182) };
+	// KF-EST tres estrellas fugaces por keyframes (dorada, cian y rosa): posicion y brillo; cada una cruza el cielo por su
+	// propio camino en 5 tramos cortos y espera estEspera segundos apagada (esperas distintas para que no salgan siempre juntas)
+	glm::vec3 estPos[3][6] = {
+		{ glm::vec3(-160, 175, -130), glm::vec3(-95, 163, -68), glm::vec3(-30, 150, -5), glm::vec3(35, 135, 58), glm::vec3(100, 118, 120), glm::vec3(165, 100, 182) },
+		{ glm::vec3(175, 170, -140), glm::vec3(110, 159, -75), glm::vec3(45, 147, -10), glm::vec3(-20, 133, 55), glm::vec3(-85, 116, 120), glm::vec3(-150, 98, 185) },
+		{ glm::vec3(-60, 185, 190), glm::vec3(-34, 174, 112), glm::vec3(-8, 161, 34), glm::vec3(18, 146, -44), glm::vec3(44, 127, -122), glm::vec3(70, 105, -200) } };
 	float estBrillo[6] = { 0.0f, 1.0f, 1.0f, 0.9f, 0.5f, 0.0f };
-	const float EST_PASO = 0.45f, EST_ESPERA = 6.0f;
-	float estReloj = 0.0f, estF = 0.0f, estBrilloAct = 0.0f;
-	int estCuadro = 5;	// empieza esperando
-	glm::vec3 estAct = estPos[0], estDir = glm::vec3(0.0f);
+	glm::vec3 estColor[3] = { glm::vec3(1.0f, 0.8f, 0.3f), glm::vec3(0.3f, 0.85f, 1.0f), glm::vec3(1.0f, 0.35f, 0.8f) };	// dorada, cian y rosa
+	const float EST_PASO = 0.45f;
+	float estEspera[3] = { 6.0f, 8.5f, 11.0f };
+	float estReloj[3] = { 4.0f, 3.5f, 3.0f }, estF = 0.0f, estBrilloAct[3] = { 0.0f, 0.0f, 0.0f };	// la primera sale a los 2 s, la segunda a los 5 y la tercera a los 8
+	int estCuadro[3] = { 5, 5, 5 };	// empiezan esperando
+	glm::vec3 estAct[3] = { estPos[0][0], estPos[1][0], estPos[2][0] }, estDir[3] = { glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f) };
 	// KF-SAT satelite explorador por keyframes: posicion y angulo de los paneles (90 doblados, 0 abiertos);
 	// sale de la estacion, abre los paneles, rodea el planeta gaseoso, los cierra y vuelve a entrar (el ultimo cuadro es igual al primero)
 	glm::vec3 satPos[9] = { C_ESTACION, C_ESTACION + glm::vec3(0, 0, -16), glm::vec3(5, 78, -115), glm::vec3(-12, 70, -150),
@@ -1501,16 +1506,18 @@ int main()
 		astF = astReloj / AST_PASO;
 		astAct = astPos[astCuadro] + (astPos[astCuadro + 1] - astPos[astCuadro]) * astF;
 		astGiroAct = astGiro[astCuadro] + (astGiro[astCuadro + 1] - astGiro[astCuadro]) * astF;
-		estReloj += dt;
-		if (estCuadro < 5 && estReloj >= EST_PASO) { estReloj -= EST_PASO; estCuadro++; }
-		else if (estCuadro == 5 && estReloj >= EST_ESPERA) { estReloj = 0.0f; estCuadro = 0; }	// termina la espera y vuelve a cruzar
-		if (estCuadro < 5) {
-			estF = estReloj / EST_PASO;
-			estAct = estPos[estCuadro] + (estPos[estCuadro + 1] - estPos[estCuadro]) * estF;
-			estBrilloAct = estBrillo[estCuadro] + (estBrillo[estCuadro + 1] - estBrillo[estCuadro]) * estF;
-			estDir = glm::normalize(estPos[estCuadro + 1] - estPos[estCuadro]);
+		for (int e = 0; e < 3; e++) {	// las tres estrellas fugaces, cada una con su reloj
+			estReloj[e] += dt;
+			if (estCuadro[e] < 5 && estReloj[e] >= EST_PASO) { estReloj[e] -= EST_PASO; estCuadro[e]++; }
+			else if (estCuadro[e] == 5 && estReloj[e] >= estEspera[e]) { estReloj[e] = 0.0f; estCuadro[e] = 0; }	// termina la espera y vuelve a cruzar
+			if (estCuadro[e] < 5) {
+				estF = estReloj[e] / EST_PASO;
+				estAct[e] = estPos[e][estCuadro[e]] + (estPos[e][estCuadro[e] + 1] - estPos[e][estCuadro[e]]) * estF;
+				estBrilloAct[e] = estBrillo[estCuadro[e]] + (estBrillo[estCuadro[e] + 1] - estBrillo[estCuadro[e]]) * estF;
+				estDir[e] = glm::normalize(estPos[e][estCuadro[e] + 1] - estPos[e][estCuadro[e]]);
+			}
+			else estBrilloAct[e] = 0.0f;
 		}
-		else estBrilloAct = 0.0f;
 		satReloj += dt;
 		if (satReloj >= SAT_PASO) { satReloj -= SAT_PASO; satCuadro = (satCuadro + 1) % 8; }	// 8 tramos; el ultimo cuadro es igual al primero
 		satF = satReloj / SAT_PASO;
@@ -4362,15 +4369,17 @@ int main()
 		}
 		offsetEfecto = glm::vec2(0.0f, 0.0f);
 		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
-		// ---- KF-EST estrella fugaz: un punto brillante y una estela de 10 esferas que se hacen chicas y transparentes hacia atras ----
-		if (estBrilloAct > 0.01f) {
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-			plainTexture.UseTexture();
+		// ---- KF-EST estrellas fugaces: cada una es un punto brillante casi blanco y una estela de 10 esferas de su color
+		// que se hacen chicas y transparentes hacia atras ----
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		plainTexture.UseTexture();
+		for (int e = 0; e < 3; e++) {
+			if (estBrilloAct[e] <= 0.01f) continue;	// esta apagada, esperando su turno
 			for (int k = 0; k < 10; k++) {
-				glUniform1f(uniformAlphaEfecto, estBrilloAct * (1.0f - k / 10.0f));
-				color = glm::vec3(1.0f, 0.95f - 0.04f * k, 0.8f - 0.06f * k);
+				glUniform1f(uniformAlphaEfecto, estBrilloAct[e] * (1.0f - k / 10.0f));
+				color = glm::mix(glm::vec3(1.0f, 1.0f, 1.0f), estColor[e], glm::min(1.0f, 0.45f + 0.12f * k));	// la cabeza casi blanca y la cola de su color
 				glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
-				model = glm::translate(glm::mat4(1.0), estAct - estDir * (2.2f * k));
+				model = glm::translate(glm::mat4(1.0), estAct[e] - estDir[e] * (2.2f * k));
 				model = glm::scale(model, glm::vec3(1.6f - 0.13f * k, 1.6f - 0.13f * k, 1.6f - 0.13f * k));
 				glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 				meshListModel[ESFERA]->RenderMeshModel();
