@@ -157,3 +157,8 @@ newmtl aAwFalcoHeadTex6
 Kd 0.800000 0.800000 0.800000
 illum 1
 map_Kd aAwFalcoHeadTex6.rgba16.png
+
+newmtl aAwAlaAzul
+Kd 0.800000 0.800000 0.800000
+illum 1
+map_Kd arwing_azul.png

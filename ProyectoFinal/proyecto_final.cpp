@@ -20,7 +20,7 @@ coma (,) pilotar el Arwing de Venom con WASD (mientras lo pilotas suena su motor
 espacio inicia o pausa el cohete de Reach (keyframes), retroceso lo reinicia, F5 guarda sus keyframes en keyframes_cohete_reach.txt y F6 los lee de nuevo
 (todas las teclas se guardan en Window y el main solo pregunta)
 Audio (clase Audio con miniaudio): soundtrack, un ambiente por planeta y la estacion que sube con la cercania, y efectos que
-solo suenan cuando pasa algo (cohetes, torreta, tornillos, vendedor, Heli-Pack, Pelican, Warthog, escudos, Jefe Maestro, Arwing).
+solo suenan cuando pasa algo (cohetes, torreta, tornillos, vendedor, Heli-Pack, Pelican, Warthog, escudos, Jefe Maestro, Arwing y Wolfen; estos dos ultimos en audio_nave.cpp).
 Evolucion de especies, cada una en 3 etapas y con su nombre arriba: Protopets (Forja), Moa (Reach), Venomianos (Venom)
 y en el espacio las ballenas espaciales (orbita sobre el sistema) y las aves de fuego (alrededor del planeta de lava).
 Keyframes que corren solos: KF-AST asteroide que cruza el sistema, KF-EST estrella fugaz y KF-SAT satelite que sale de la estacion.
@@ -44,6 +44,7 @@ Keyframes que corren solos: KF-AST asteroide que cruza el sistema, KF-EST estrel
 
 #include "Window.h"
 #include "Audio.h"
+#include "audio_nave.h"	// motor del Arwing y de los Wolfen (318337872), tambien con miniaudio
 #include "Mesh_tn.h"
 #include "Shader_light.h"
 #include "Camera.h"
@@ -86,6 +87,7 @@ Texture anilloTexture;
 //textura cohete de venom
 Texture plasmaTexture;	// plasma azul del cohete de Venom (tambien el del Arwing)
 Texture plasmaVerdeTexture;	// plasma verde de los Wolfen: la misma textura con los canales verde y azul cambiados
+Texture brilloArwingTexture;	// bola de plasma azul del Arwing: nucleo blanco, resplandor y destello de estrella
 Texture brilloPlasmaTexture;	// mancha de luz redonda del plasma de las naves (8 cuadros iguales porque la malla HUMO usa 1/8 de la textura)
 
 
@@ -206,7 +208,8 @@ const float CICLO_ESTACION = 36.0f, T_VUELO = 14.0f;	// cada 36 s una nave sale 
 const glm::vec3 TOBERA_ARWING[2] = { glm::vec3(140.0f, -70.0f, -340.0f), glm::vec3(-140.0f, -70.0f, -340.0f) };
 const glm::vec3 TOBERA_WOLFEN[2] = { glm::vec3(0.45f, 0.1f, -1.55f), glm::vec3(-0.45f, 0.1f, -1.55f) };
 const float PLASMA_NAVE_VIDA = 0.4f, PLASMA_NAVE_CADA = 0.03f;	// cada particula vive 0.4 s y sale una cada 0.03 s de cada tobera
-const float PLASMA_ARWING_TAM = 1.1f, PLASMA_WOLFEN_TAM = 1.2f;	// largo de la particula al nacer (el ancho es la mitad)
+const float PLASMA_ARWING_TAM = 0.7f, PLASMA_WOLFEN_TAM = 1.2f;	// largo de la particula al nacer (el ancho es la mitad)
+const float PLASMA_ARWING_BOLA = 0.85f;	// tamano del destello azul de cada tobera del Arwing (el nucleo blanco es mas o menos un tercio)
 
 const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);
 // los objetos de Mundo Forja se reparten por el planeta: su x y su z locales se multiplican por 1.6 (la altura no cambia);
@@ -824,6 +827,7 @@ int main()
 	llamaTexture = Texture("Textures/llama_atlas.png");			llamaTexture.LoadTextureA();	// 8 cuadros de la llama
 	plasmaTexture = Texture("Textures/plasma_azul.png");		plasmaTexture.LoadTextureA();	// plasma azul del cohete de Venom (practica 10)
 	plasmaVerdeTexture = Texture("Textures/plasma_verde.png");	plasmaVerdeTexture.LoadTextureA();	// plasma verde de los Wolfen
+	brilloArwingTexture = Texture("Textures/brillo_arwing.png");	brilloArwingTexture.LoadTextureA();	// bola de plasma del Arwing
 	brilloPlasmaTexture = Texture("Textures/brillo_plasma.png");	brilloPlasmaTexture.LoadTextureA();	// brillo del plasma de las naves
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -1202,11 +1206,8 @@ int main()
 	Audio::Abrir("warthog", "audio/sfx_reach_warthog.wav");
 	Audio::Abrir("escudos", "audio/sfx_reach_escudos.wav");
 	Audio::Abrir("jefe", "audio/sfx_reach_jefe.wav");
-	// Venom 318337872: motor del Arwing mientras se pilota
-	Audio::Abrir("arwing", "audio/motor_arwing.wav");
 	Audio::Volumen("pelican", 0);
 	Audio::Volumen("warthog", 0);
-	Audio::Volumen("arwing", 750);
 	Audio::Volumen("musica", 220);
 	Audio::Volumen("ambForja", 0);
 	Audio::Volumen("ambReach", 0);
@@ -1219,7 +1220,10 @@ int main()
 	Audio::Reproducir("ambEstacion", true);
 	float volForja = 0.0f, volReach = 0.0f, volVenom = 0.0f, volEstacion = 0.0f, distVendedor = 0.0f;
 	bool vendedorSaludo = false, heliSonando = false;
-	bool warthogSonando = false, escudosSonando = false, jefeSonando = false, arwingSonando = false;
+	// sonido de los Wolfen (318337872): donde esta la camara, hacia donde queda su derecha y el Wolfen mas cercano
+	glm::vec3 oidoPos = glm::vec3(0.0f), derechaCam = glm::vec3(1.0f, 0.0f, 0.0f), pS = glm::vec3(0.0f);
+	float distMin = 0.0f, panW = 0.0f, aS = 0.0f, bobS = 0.0f, dS = 0.0f, pulsoBola = 0.0f;
+	bool warthogSonando = false, escudosSonando = false, jefeSonando = false;
 	float distanciaEscudos = 0.0f, volEscudos = 0.0f, distanciaJefe = 0.0f, volJefe = 0.0f, volPelican = 0.0f, volWarthog = 0.0f;
 	glm::vec3 posAudioEscudo0 = C_REACH + escalaReach * glm::vec3(escudosHR[0].x, 1.35f, escudosHR[0].y);
 	glm::vec3 posAudioEscudo1 = C_REACH + escalaReach * glm::vec3(escudosHR[1].x, 1.35f, escudosHR[1].y);
@@ -1360,9 +1364,7 @@ int main()
 			posArwing.y = glm::clamp(posArwing.y, ARWING_ALT_MIN, ARWING_ALT_MAX);
 		}
 
-		// motor del Arwing (318337872): suena solo mientras se pilota con la coma
-		if (pilotando && !arwingSonando) { Audio::Reproducir("arwing", true); arwingSonando = true; }
-		if (!pilotando && arwingSonando) { Audio::Detener("arwing"); arwingSonando = false; }
+		audioNaveMotor(pilotando);	// motor del Arwing (318337872): suena solo mientras se pilota con la coma, con fundidos al entrar y salir
 
 		// ---- plasma de las naves: cada PLASMA_NAVE_CADA s sale una particula de cada tobera (Arwing azul, Wolfen verde) ----
 		plasmaNaveAcum += dt;
@@ -1936,6 +1938,18 @@ int main()
 		}
 		else { camPos = destPos; camMira = destMira; }
 		vista = glm::lookAt(camPos, camMira, glm::vec3(0.0f, 1.0f, 0.0f));
+		// ---- sonido de los Wolfen que patrullan (318337872): suena el mas cercano a la camara (mismas formulas de posicion que el dibujo) ----
+		oidoPos = glm::vec3(glm::inverse(vista)[3]);	// donde esta la camara
+		derechaCam = glm::vec3(vista[0][0], vista[1][0], vista[2][0]);	// hacia donde queda su derecha
+		distMin = 1.0e9f; panW = 0.0f;
+		for (int i = 0; i < 3; i++) {
+			aS = wWolfen[i] * now + faseWolfen[i];
+			bobS = 0.7f * now + 1.7f * i;
+			pS = C_VENOM + glm::vec3(radioWolfen[i] * cosf(aS), altWolfen[i] + 2.0f * sinf(bobS), 0.8f * radioWolfen[i] * sinf(aS));
+			dS = glm::length(pS - oidoPos);
+			if (dS < distMin) { distMin = dS; panW = dS > 0.001f ? glm::dot((pS - oidoPos) / dS, derechaCam) : 0.0f; }
+		}
+		audioNaveWolfen(distMin, panW);	// volumen por distancia y paneo izquierda-derecha
 
 		// ---------------- sol: ciclo de 120 s ----------------
 		tiempoDia += dt * velocidadDia;
@@ -4248,13 +4262,31 @@ int main()
 		giroCamara = glm::transpose(glm::mat4(glm::mat3(vista)));	// deshace el giro de la camara
 		brilloPlasmaTexture.UseTexture();
 		for (int i = 0; i < MAX_PLASMA_NAVE; i++) {
-			if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA) continue;
+			if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA || !plasmaNaveVerde[i]) continue;	// el Arwing no usa estas manchas: tiene su bola de plasma (abajo)
 			vidaP = plasmaNaveEdad[i] / PLASMA_NAVE_VIDA;	// 0 nace, 1 muere
 			color = (plasmaNaveVerde[i] ? glm::vec3(0.35f, 1.0f, 0.45f) : glm::vec3(0.35f, 0.65f, 1.0f)) * (0.9f * (1.0f - vidaP) * (1.0f - vidaP));
 			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
 			tamP = 0.55f * plasmaNaveTam[i] * (1.0f + vidaP);
 			model = glm::translate(glm::mat4(1.0), glm::vec3(plasmaNaveM[i][3]));	// el origen de la particula es su tobera
 			model = model * giroCamara;
+			model = glm::scale(model, glm::vec3(tamP, tamP, tamP));
+			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+			meshListModel[HUMO]->RenderMeshModel();
+		}
+		// bola de plasma del Arwing (como en Star Fox 64): un destello azul con estrella en cada tobera, siempre mirando a la camara y con un parpadeo rapido
+		brilloArwingTexture.UseTexture();
+		naveM = glm::translate(glm::mat4(1.0), posArwing);
+		naveM = glm::rotate(naveM, yawArwing, glm::vec3(0.0f, 1.0f, 0.0f));
+		naveM = glm::rotate(naveM, -pitchArwing, glm::vec3(1.0f, 0.0f, 0.0f));
+		naveM = glm::rotate(naveM, rollArwing, glm::vec3(0.0f, 0.0f, 1.0f));
+		for (int n = 0; n < 2; n++) {
+			pulsoBola = 1.0f + 0.12f * sinf(38.0f * now + 2.0f * n) + 0.05f * sinf(91.0f * now + n);
+			color = glm::vec3(0.95f, 0.97f, 1.0f) * (0.75f * pulsoBola);
+			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
+			tamP = PLASMA_ARWING_BOLA * empujeArwing * pulsoBola;
+			model = glm::translate(glm::mat4(1.0), glm::vec3(naveM * glm::vec4(TOBERA_ARWING[n] * ARWING_ESCALA, 1.0f)));	// la tobera en el mundo
+			model = model * giroCamara;
+			model = glm::rotate(model, 0.3f * sinf(3.0f * now + n), glm::vec3(0.0f, 0.0f, 1.0f));	// la estrella se mece un poco
 			model = glm::scale(model, glm::vec3(tamP, tamP, tamP));
 			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 			meshListModel[HUMO]->RenderMeshModel();
@@ -4460,6 +4492,7 @@ int main()
 		mainWindow.swapBuffers();
 	}
 
+	audioNaveCerrar();
 	Audio::CerrarTodo();
 	return 0;
 }
