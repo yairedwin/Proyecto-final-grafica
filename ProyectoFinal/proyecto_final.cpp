@@ -214,6 +214,7 @@ const float NPC_RUTA_W[4] = { 0.30f, 0.30f, 0.17f, -0.14f };	// velocidad angula
 const float NPC_RUTA_FASE[4] = { 0.0f, -0.55f, 0.0f, 3.14159f };	// Peppy va un poco atras de Fox; Pigma del lado opuesto de Wolf
 const float NPC_ALTO = 4.2f;	// altura final de cada NPC en unidades del mundo
 const float NPC_ALTO_MODELO[4] = { 4.2575f, 436.424f, 8.43f, 1.5573f };	// altura que trae cada modelo (para escalarlo a NPC_ALTO)
+const glm::vec3 NPC_CENTRO[4] = { glm::vec3(0.0052f, 2.1268f, -0.0022f), glm::vec3(0.0005f, 216.5160f, -18.0000f), glm::vec3(0.5840f, 4.2251f, -0.2801f), glm::vec3(0.0000f, 0.7795f, 0.0473f) };	// los OBJ estan centrados en el origen; este es el centro que tenian (en unidades del modelo), para que la figura pise el suelo
 const float NPC_CADERA[4] = { 0.39f, 0.29f, 0.39f, 0.30f }, NPC_HOMBRO[4] = { 0.69f, 0.53f, 0.68f, 0.54f };	// donde giran piernas y brazos, como fraccion de la altura
 const glm::vec3 LAVA_POS = glm::vec3(26.0f, 0.0f, -50.0f);	// centro de la zona de lava
 // la lava no es una figura geometrica: son 7 manchas encimadas (x, z, radio x, radio z), cada una girada distinto
@@ -880,7 +881,7 @@ int main()
 	PointLight luminarias[12];
 	for (int i = 0; i < 12; i++) {
 		glm::vec3 c = colorLuminaria[i / 4], q = posLuminaria[i];
-		luminarias[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.0f, q.x, 5.0f, q.z, 1.0f, 0.14f, 0.012f);
+		luminarias[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.0f, q.x, 5.0f, q.z, 1.0f, 0.13f + 0.005f * (i % 4), 0.011f + 0.001f * (i % 3));	// cada luminaria con su propia atenuacion
 	}
 	// luces de ambiente que siempre estan prendidas: le dan color a cada planeta y a la pista
 	const int N_AMBIENTE = 12;
@@ -899,7 +900,7 @@ int main()
 	PointLight lucesAmbiente[N_AMBIENTE];
 	for (int i = 0; i < N_AMBIENTE; i++) {
 		glm::vec3 c = colorAmbiente[i], q = posAmbiente[i];
-		lucesAmbiente[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.6f, q.x, q.y, q.z, 1.0f, 0.09f, 0.006f);
+		lucesAmbiente[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.6f, q.x, q.y, q.z, 1.0f, 0.08f + 0.005f * (i % 4), 0.005f + 0.001f * (i % 3));	// cada luz con su propia atenuacion
 	}
 
 	// S1 reflector de la plataforma (tecla L) y S2 luces de la estacion (tecla K)
@@ -2001,7 +2002,7 @@ int main()
 		// luces de la lava: naranja que titila distinto cada una (se reconstruyen cada cuadro con otra intensidad)
 		for (int i = 10; i < 12; i++) {
 			tVol = 2.0f + 0.5f * sinf(7.0f * now + 3.0f * i) + 0.3f * sinf(17.0f * now + i) + 0.2f * sinf(2.3f * now);
-			lucesAmbiente[i] = PointLight(colorAmbiente[i].x, colorAmbiente[i].y, colorAmbiente[i].z, 0.0f, tVol, posAmbiente[i].x, posAmbiente[i].y, posAmbiente[i].z, 1.0f, 0.07f, 0.004f);
+			lucesAmbiente[i] = PointLight(colorAmbiente[i].x, colorAmbiente[i].y, colorAmbiente[i].z, 0.0f, tVol, posAmbiente[i].x, posAmbiente[i].y, posAmbiente[i].z, 1.0f, i == 10 ? 0.07f : 0.06f, i == 10 ? 0.004f : 0.005f);
 		}
 		// luminarias: todas a la vez segun el ciclo
 		// el shader solo recibe 8 luces puntuales, asi que de todas las candidatas mando las 8 mas cercanas a la camara
@@ -4127,6 +4128,7 @@ int main()
 			mNpc = glm::rotate(mNpc, rumboNpc, glm::vec3(0.0f, 1.0f, 0.0f));
 			mNpc = glm::rotate(mNpc, 0.05f * sinf(pasoNpc), glm::vec3(0.0f, 0.0f, 1.0f));	// el torso se balancea al caminar
 			mNpc = glm::scale(mNpc, glm::vec3(NPC_ALTO / NPC_ALTO_MODELO[i]));
+			mNpc = glm::translate(mNpc, NPC_CENTRO[i]);	// regresa la figura centrada a que pise el suelo
 			for (int j = 0; j < 5; j++) {
 				mPieza = mNpc;
 				if (j >= 1) {	// 1 y 2 piernas, 3 y 4 brazos: giran sobre la cadera o el hombro; cada una en contra de la de enfrente
