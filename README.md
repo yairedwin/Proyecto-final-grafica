@@ -1,7 +1,9 @@
 # Proyecto final · Sistema Tres Mundos
 
 Computación Gráfica e Interacción Humano-Computadora, semestre 2027-1.
-Escena en OpenGL 4.3 (C++, GLFW, GLEW, GLM, Assimp) con tres planetas conectados por una pista circular y ciclo día/noche.
+Escenario interactivo en OpenGL 4.3 (C++, GLFW, GLEW, GLM, Assimp y miniaudio) sobre viajes espaciales y evolución de especies intergalácticas: tres planetas de universos distintos, unidos por una pista de carreras elíptica, una estación espacial y naves que viajan entre ellos, con un avatar que camina por cada mundo, especies en tres etapas de su evolución, animaciones por keyframes, audio (soundtrack, ambientes y efectos) y ciclo de día y noche.
+
+> **Versión final: `v5`** (rama `version-5-final`). Es la que se entrega; el detalle de cada versión está en la sección [Versiones](#versiones).
 
 | Nº de cuenta | Universo · planeta |
 |---|---|
