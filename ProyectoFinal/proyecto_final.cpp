@@ -87,7 +87,6 @@ Texture anilloTexture;
 //textura cohete de venom
 Texture plasmaTexture;	// plasma azul del cohete de Venom (tambien el del Arwing)
 Texture plasmaVerdeTexture;	// plasma verde de los Wolfen: la misma textura con los canales verde y azul cambiados
-Texture brilloArwingTexture;	// bola de plasma azul del Arwing: nucleo blanco, resplandor y destello de estrella
 Texture brilloPlasmaTexture;	// mancha de luz redonda del plasma de las naves (8 cuadros iguales porque la malla HUMO usa 1/8 de la textura)
 
 
@@ -111,6 +110,7 @@ Model naveRatchet;		// la Aphelion, estacionada junto al planeta
 Model alienCuerpo, alienPataIzq, alienPataDer, alienPataFrente, alienBrazoIzq, alienBrazoDer, alienCola;	// avatar: cada pieza esta centrada en su articulacion
 Model Etapa1_M, Etapa2_M, Etapa3_M;	// cohete Saturn V en tres etapas; juntas forman el cohete completo (AB1)
 Model reachEtapas[4];	// Saturn V de Reach (Practica 10 de 317136421): etapa 1, etapa 2, etapa 3 y capsula, ya centradas (Models/SaturnV)
+Model npcModelo[4][5];	// NPCs de Star Fox en Venom (Models/venom/npc/): Fox, Peppy, Wolf y Pigma, cada uno en 5 piezas: cuerpo, pierna izq., pierna der., brazo izq., brazo der.
 // modelos de Halo para Reach (The Models Resource, ver Models/halo/FUENTES.txt), en Models/halo
 Model arwingModel, wolfenModel;	// ARWING/WOLFEN: naves de Venom (Models/Arwing.obj y Models/WolfenII.obj, texturas en Textures/)
 Model lunaMajoras;		// LUNA: luna de Majora's Mask (Models/venom/luna_majoras)
@@ -206,10 +206,22 @@ const float CICLO_ESTACION = 36.0f, T_VUELO = 14.0f;	// cada 36 s una nave sale 
 // PLASMA DE LAS NAVES: el Arwing echa plasma azul y los Wolfen verde (las mismas particulas del cohete de Venom, pegadas a las toberas)
 // toberas medidas en los .obj (unidades del modelo; se multiplican por la escala de cada nave) y el plasma sale hacia atras (-z)
 const glm::vec3 TOBERA_ARWING[2] = { glm::vec3(140.0f, -70.0f, -340.0f), glm::vec3(-140.0f, -70.0f, -340.0f) };
+// NPCs de Star Fox y zona de lava de Venom (posiciones locales al centro del planeta, sumadas a C_VENOM)
+// Fox y Peppy caminan en circulo por la zona de llegada; Wolf y Pigma caminan alrededor de la lava
+const glm::vec3 NPC_RUTA_C[4] = { glm::vec3(50.0f, 0.0f, 18.0f), glm::vec3(50.0f, 0.0f, 18.0f), glm::vec3(26.0f, 0.0f, -50.0f), glm::vec3(26.0f, 0.0f, -50.0f) };	// centro del circulo de cada uno
+const glm::vec2 NPC_RUTA_R[4] = { glm::vec2(7.0f, 6.0f), glm::vec2(7.0f, 6.0f), glm::vec2(14.0f, 11.0f), glm::vec2(14.0f, 11.0f) };	// radios en x y z
+const float NPC_RUTA_W[4] = { 0.30f, 0.30f, 0.17f, -0.14f };	// velocidad angular (rad/s); el signo es el sentido
+const float NPC_RUTA_FASE[4] = { 0.0f, -0.55f, 0.0f, 3.14159f };	// Peppy va un poco atras de Fox; Pigma del lado opuesto de Wolf
+const float NPC_ALTO = 4.2f;	// altura final de cada NPC en unidades del mundo
+const float NPC_ALTO_MODELO[4] = { 4.2575f, 436.424f, 8.43f, 1.5573f };	// altura que trae cada modelo (para escalarlo a NPC_ALTO)
+const float NPC_CADERA[4] = { 0.39f, 0.29f, 0.39f, 0.30f }, NPC_HOMBRO[4] = { 0.69f, 0.53f, 0.68f, 0.54f };	// donde giran piernas y brazos, como fraccion de la altura
+const glm::vec3 LAVA_POS = glm::vec3(26.0f, 0.0f, -50.0f);	// centro de la zona de lava
+// la lava no es una figura geometrica: son 7 manchas encimadas (x, z, radio x, radio z), cada una girada distinto
+const int LAVA_N = 7;
+const glm::vec4 LAVA_MANCHA[LAVA_N] = { glm::vec4(0.0f, 0.0f, 7.0f, 5.0f), glm::vec4(5.0f, 2.5f, 4.5f, 3.2f), glm::vec4(-5.5f, 1.5f, 4.2f, 3.5f), glm::vec4(1.5f, -4.5f, 4.5f, 3.0f), glm::vec4(-2.0f, 4.5f, 3.6f, 2.8f), glm::vec4(7.5f, -2.0f, 3.0f, 2.2f), glm::vec4(-7.5f, -2.5f, 2.6f, 2.0f) };
 const glm::vec3 TOBERA_WOLFEN[2] = { glm::vec3(0.45f, 0.1f, -1.55f), glm::vec3(-0.45f, 0.1f, -1.55f) };
 const float PLASMA_NAVE_VIDA = 0.4f, PLASMA_NAVE_CADA = 0.03f;	// cada particula vive 0.4 s y sale una cada 0.03 s de cada tobera
-const float PLASMA_ARWING_TAM = 0.7f, PLASMA_WOLFEN_TAM = 1.2f;	// largo de la particula al nacer (el ancho es la mitad)
-const float PLASMA_ARWING_BOLA = 0.85f;	// tamano del destello azul de cada tobera del Arwing (el nucleo blanco es mas o menos un tercio)
+const float PLASMA_ARWING_TAM = 1.1f, PLASMA_WOLFEN_TAM = 1.2f;	// largo de la particula al nacer (el ancho es la mitad)
 
 const glm::vec3 PLATAFORMA = C_FORJA + glm::vec3(0.0f, 0.0f, -34.0f);
 // los objetos de Mundo Forja se reparten por el planeta: su x y su z locales se multiplican por 1.6 (la altura no cambia);
@@ -799,6 +811,15 @@ int main()
 	//obj de venom
 	arwingModel = Model();		arwingModel.LoadModel("Models/venom/naves/Arwing.obj");
 	wolfenModel = Model();		wolfenModel.LoadModel("Models/venom/naves/WolfenII.obj");
+	{	// NPCs de Star Fox: cada personaje son 5 modelos (cuerpo y las 4 extremidades) para poder animar que camina
+		const char* nombresNpc[4] = { "Fox", "Peppy", "Wolf", "Pigma" };
+		const char* piezasNpc[5] = { "cuerpo", "piernaI", "piernaD", "brazoI", "brazoD" };
+		char rutaNpc[128];
+		for (int i = 0; i < 4; i++) for (int j = 0; j < 5; j++) {
+			sprintf_s(rutaNpc, "Models/venom/npc/%s_%s.obj", nombresNpc[i], piezasNpc[j]);
+			npcModelo[i][j] = Model();	npcModelo[i][j].LoadModel(rutaNpc);
+		}
+	}
 	lunaMajoras = Model();		lunaMajoras.LoadModel("Models/venom/luna_majoras/moon.obj");
 	catspawModel = Model();		catspawModel.LoadModel("Models/venom/naves/Catzpaw.obj");
 	//cohete de venom
@@ -827,7 +848,6 @@ int main()
 	llamaTexture = Texture("Textures/llama_atlas.png");			llamaTexture.LoadTextureA();	// 8 cuadros de la llama
 	plasmaTexture = Texture("Textures/plasma_azul.png");		plasmaTexture.LoadTextureA();	// plasma azul del cohete de Venom (practica 10)
 	plasmaVerdeTexture = Texture("Textures/plasma_verde.png");	plasmaVerdeTexture.LoadTextureA();	// plasma verde de los Wolfen
-	brilloArwingTexture = Texture("Textures/brillo_arwing.png");	brilloArwingTexture.LoadTextureA();	// bola de plasma del Arwing
 	brilloPlasmaTexture = Texture("Textures/brillo_plasma.png");	brilloPlasmaTexture.LoadTextureA();	// brillo del plasma de las naves
 	// skyboxes: orden rt, lf, up, dn, bk, ft
 	std::vector<std::string> caras;
@@ -863,7 +883,7 @@ int main()
 		luminarias[i] = PointLight(c.x, c.y, c.z, 0.0f, 1.0f, q.x, 5.0f, q.z, 1.0f, 0.14f, 0.012f);
 	}
 	// luces de ambiente que siempre estan prendidas: le dan color a cada planeta y a la pista
-	const int N_AMBIENTE = 10;
+	const int N_AMBIENTE = 12;
 	glm::vec3 posAmbiente[N_AMBIENTE] = {
 		C_FORJA + SEP_MF * glm::vec3(24, 6, 1),		// horno de la refineria
 		C_FORJA + SEP_MF * glm::vec3(-6, 4, 3),		// vendedor Gadgetron
@@ -871,9 +891,11 @@ int main()
 		C_REACH + glm::vec3(34, 3, 14),		// zona de aterrizaje
 		C_VENOM + glm::vec3(0, 7, 17),		// base de Andross
 		C_VENOM + glm::vec3(-14, 4, -2),	// torres
-		glm::vec3(PISTA_A, 20.0f, PISTA_Z), glm::vec3(-PISTA_A, 20.0f, PISTA_Z), glm::vec3(0.0f, 20.0f, PISTA_Z + PISTA_B), glm::vec3(0.0f, 20.0f, PISTA_Z - PISTA_B) };	// 4 de la pista
+		glm::vec3(PISTA_A, 20.0f, PISTA_Z), glm::vec3(-PISTA_A, 20.0f, PISTA_Z), glm::vec3(0.0f, 20.0f, PISTA_Z + PISTA_B), glm::vec3(0.0f, 20.0f, PISTA_Z - PISTA_B),	// 4 de la pista
+		C_VENOM + LAVA_POS + glm::vec3(1.0f, 3.0f, 0.5f), C_VENOM + LAVA_POS + glm::vec3(-4.5f, 2.5f, 2.5f) };	// 2 de la lava (naranja, titilan)
 	glm::vec3 colorAmbiente[N_AMBIENTE] = { glm::vec3(1.0f, 0.45f, 0.1f), glm::vec3(0.2f, 0.5f, 1.0f), glm::vec3(0.9f, 0.95f, 1.0f), glm::vec3(0.3f, 1.0f, 0.4f),
-		glm::vec3(1.0f, 0.2f, 0.1f), glm::vec3(0.7f, 0.3f, 1.0f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f) };
+		glm::vec3(1.0f, 0.2f, 0.1f), glm::vec3(0.7f, 0.3f, 1.0f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f), glm::vec3(0.2f, 0.9f, 1.0f), glm::vec3(1.0f, 0.3f, 0.8f),
+		glm::vec3(1.0f, 0.38f, 0.07f), glm::vec3(1.0f, 0.5f, 0.12f) };
 	PointLight lucesAmbiente[N_AMBIENTE];
 	for (int i = 0; i < N_AMBIENTE; i++) {
 		glm::vec3 c = colorAmbiente[i], q = posAmbiente[i];
@@ -1223,11 +1245,15 @@ int main()
 	Audio::Reproducir("ambReach", true);
 	Audio::Reproducir("ambVenom", true);
 	Audio::Reproducir("ambEstacion", true);
+	float tVol = 0.0f;	// intensidad de las luces de la lava, que titilan
+	float angNpc = 0.0f, pasoNpc = 0.0f, rumboNpc = 0.0f, lavaPulso = 0.0f, burbujaT = 0.0f, rocaX = 0.0f, rocaZ = 0.0f, rocaS = 0.0f, mx = 0.0f, mz = 0.0f;	// NPCs de Star Fox (camino y paso) y animacion de la lava
+	bool rocaLibre = true;
+	glm::mat4 mNpc = glm::mat4(1.0f), mPieza = glm::mat4(1.0f);
 	float volForja = 0.0f, volReach = 0.0f, volVenom = 0.0f, volEstacion = 0.0f, distVendedor = 0.0f;
 	bool vendedorSaludo = false, heliSonando = false;
 	// sonido de los Wolfen (318337872): donde esta la camara, hacia donde queda su derecha y el Wolfen mas cercano
 	glm::vec3 oidoPos = glm::vec3(0.0f), derechaCam = glm::vec3(1.0f, 0.0f, 0.0f), pS = glm::vec3(0.0f);
-	float distMin = 0.0f, panW = 0.0f, aS = 0.0f, bobS = 0.0f, dS = 0.0f, pulsoBola = 0.0f;
+	float distMin = 0.0f, panW = 0.0f, aS = 0.0f, bobS = 0.0f, dS = 0.0f;
 	bool warthogSonando = false, escudosSonando = false, jefeSonando = false;
 	float distanciaEscudos = 0.0f, volEscudos = 0.0f, distanciaJefe = 0.0f, volJefe = 0.0f, volPelican = 0.0f, volWarthog = 0.0f;
 	glm::vec3 posAudioEscudo0 = C_REACH + escalaReach * glm::vec3(escudosHR[0].x, 1.35f, escudosHR[0].y);
@@ -1972,6 +1998,11 @@ int main()
 		mainLight = DirectionalLight(colSol.x, colSol.y, colSol.z, ambiental, difusa, dirSol.x, dirSol.y, dirSol.z);
 		esDeNoche = s2 < 0.0f;
 
+		// luces de la lava: naranja que titila distinto cada una (se reconstruyen cada cuadro con otra intensidad)
+		for (int i = 10; i < 12; i++) {
+			tVol = 2.0f + 0.5f * sinf(7.0f * now + 3.0f * i) + 0.3f * sinf(17.0f * now + i) + 0.2f * sinf(2.3f * now);
+			lucesAmbiente[i] = PointLight(colorAmbiente[i].x, colorAmbiente[i].y, colorAmbiente[i].z, 0.0f, tVol, posAmbiente[i].x, posAmbiente[i].y, posAmbiente[i].z, 1.0f, 0.07f, 0.004f);
+		}
 		// luminarias: todas a la vez segun el ciclo
 		// el shader solo recibe 8 luces puntuales, asi que de todas las candidatas mando las 8 mas cercanas a la camara
 		pointLightCount = 0;
@@ -4029,6 +4060,87 @@ int main()
 			meshListModel[ESFERA]->RenderMeshModel();
 		}
 
+		// ---- ZONA DE LAVA de Venom: manchas irregulares encimadas con costra oscura en la orilla, rocas sueltas, burbujas y dos luces naranjas ----
+		lavaPulso = 0.5f + 0.5f * sinf(2.2f * now);
+		for (int i = 0; i < LAVA_N; i++) {	// costra: la misma mancha un poco mas grande y oscura, asi el borde no es limpio
+			rocaTexture.UseTexture();
+			model = glm::translate(glm::mat4(1.0f), C_VENOM + LAVA_POS + glm::vec3(LAVA_MANCHA[i].x, 0.09f + 0.004f * i, LAVA_MANCHA[i].y));
+			model = glm::rotate(model, 0.9f * i + 0.4f, glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(LAVA_MANCHA[i].z * 1.22f, 0.12f, LAVA_MANCHA[i].w * 1.22f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.22f, 0.1f, 0.07f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CILINDRO]->RenderMeshModel();
+		}
+		planetaTexture[2].UseTexture();	// la misma textura de lava del planeta
+		for (int i = 0; i < LAVA_N; i++) {
+			model = glm::translate(glm::mat4(1.0f), C_VENOM + LAVA_POS + glm::vec3(LAVA_MANCHA[i].x, 0.13f + 0.012f * i, LAVA_MANCHA[i].y));
+			model = glm::rotate(model, 0.9f * i + (i % 2 ? 0.04f : -0.05f) * now, glm::vec3(0.0f, 1.0f, 0.0f));	// cada mancha gira muy despacio distinto: la superficie parece fluir
+			model = glm::scale(model, glm::vec3(LAVA_MANCHA[i].z, 0.12f, LAVA_MANCHA[i].w));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.5f + 0.2f * lavaPulso, 0.8f + 0.25f * sinf(1.7f * now + i), 0.45f);	// mas de 1: brilla como si emitiera luz
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[CILINDRO]->RenderMeshModel();
+		}
+		rocaTexture.UseTexture();
+		for (int i = 0; i < LAVA_N; i++) for (int k = 0; k < 4; k++) {	// rocas sueltas en la orilla de cada mancha, tamanos y lugares distintos; solo si quedan fuera de las demas manchas
+			alV = 1.7f * i + 1.9f * k + 0.6f * sinf(5.0f * i + k);
+			rocaX = LAVA_MANCHA[i].x + 1.15f * LAVA_MANCHA[i].z * cosf(alV);
+			rocaZ = LAVA_MANCHA[i].y + 1.15f * LAVA_MANCHA[i].w * sinf(alV);
+			rocaLibre = true;
+			for (int j = 0; j < LAVA_N; j++) {
+				mx = (rocaX - LAVA_MANCHA[j].x) / (LAVA_MANCHA[j].z * 1.05f); mz = (rocaZ - LAVA_MANCHA[j].y) / (LAVA_MANCHA[j].w * 1.05f);
+				if (j != i && mx * mx + mz * mz < 1.0f) rocaLibre = false;
+			}
+			if (!rocaLibre || ((i + k) % 3 == 0)) continue;	// se dejan huecos para que la orilla no se vea pareja
+			rocaS = 0.45f + 0.5f * (0.5f + 0.5f * sinf(12.9f * i + 78.2f * k));
+			model = glm::translate(glm::mat4(1.0f), C_VENOM + LAVA_POS + glm::vec3(rocaX, 0.2f * rocaS, rocaZ));
+			model = glm::rotate(model, 2.3f * i + k, glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(rocaS * (1.0f + 0.5f * sinf(3.0f * k + i)), rocaS * 0.7f, rocaS * 1.1f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(0.3f, 0.2f, 0.17f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+		}
+		planetaTexture[2].UseTexture();
+		for (int i = 0; i < 5; i++) {	// burbujas: suben desde la lava, crecen y desaparecen al llegar arriba
+			burbujaT = fmodf(0.35f * now + 0.2f * i, 1.0f);
+			model = glm::translate(glm::mat4(1.0f), C_VENOM + LAVA_POS + glm::vec3(LAVA_MANCHA[i].x * 0.8f, 0.3f + 2.2f * burbujaT, LAVA_MANCHA[i].y * 0.8f));
+			model = glm::scale(model, glm::vec3(0.3f * (1.0f - burbujaT) + 0.08f));
+			glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+			color = glm::vec3(1.8f, 1.1f, 0.5f);
+			glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+			meshListModel[ESFERA]->RenderMeshModel();
+		}
+
+		// ---- NPCs de Star Fox en Venom: Fox y Peppy caminan por la zona de llegada, Wolf y Pigma rodean la lava ----
+		// cada uno recorre una elipse mirando hacia donde camina; el cuerpo sube y baja con cada paso, las piernas y los brazos balancean en sentidos contrarios
+		color = glm::vec3(1.0f, 1.0f, 1.0f);	// blanco para que no tina la textura del modelo
+		glUniform3fv(uniformColor, 1, glm::value_ptr(color));
+		metalNave.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		for (int i = 0; i < 4; i++) {
+			angNpc = NPC_RUTA_W[i] * now + NPC_RUTA_FASE[i];
+			pVen = C_VENOM + NPC_RUTA_C[i] + glm::vec3(NPC_RUTA_R[i].x * cosf(angNpc), 0.0f, NPC_RUTA_R[i].y * sinf(angNpc));
+			rumboNpc = atan2f(-NPC_RUTA_R[i].x * sinf(angNpc) * (NPC_RUTA_W[i] > 0.0f ? 1.0f : -1.0f), NPC_RUTA_R[i].y * cosf(angNpc) * (NPC_RUTA_W[i] > 0.0f ? 1.0f : -1.0f));	// tangente de la elipse en el sentido del recorrido
+			pasoNpc = 5.0f * now + 1.3f * i;	// fase del paso
+			mNpc = glm::translate(glm::mat4(1.0f), pVen + glm::vec3(0.0f, 0.12f * fabsf(sinf(pasoNpc)), 0.0f));
+			mNpc = glm::rotate(mNpc, rumboNpc, glm::vec3(0.0f, 1.0f, 0.0f));
+			mNpc = glm::rotate(mNpc, 0.05f * sinf(pasoNpc), glm::vec3(0.0f, 0.0f, 1.0f));	// el torso se balancea al caminar
+			mNpc = glm::scale(mNpc, glm::vec3(NPC_ALTO / NPC_ALTO_MODELO[i]));
+			for (int j = 0; j < 5; j++) {
+				mPieza = mNpc;
+				if (j >= 1) {	// 1 y 2 piernas, 3 y 4 brazos: giran sobre la cadera o el hombro; cada una en contra de la de enfrente
+					alto = (j <= 2 ? NPC_CADERA[i] : NPC_HOMBRO[i]) * NPC_ALTO_MODELO[i];
+					theta = (j <= 2 ? 0.55f : 0.45f) * sinf(pasoNpc) * ((j == 1 || j == 4) ? 1.0f : -1.0f);
+					mPieza = glm::translate(mPieza, glm::vec3(0.0f, alto, 0.0f));
+					mPieza = glm::rotate(mPieza, theta, glm::vec3(1.0f, 0.0f, 0.0f));
+					mPieza = glm::translate(mPieza, glm::vec3(0.0f, -alto, 0.0f));
+				}
+				glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(mPieza));
+				npcModelo[i][j].RenderModel();
+			}
+		}
+
 		// ---- LUNA de Majora's Mask (easter egg) ----
 		// el modelo esta centrado en el origen, mide ~2100 de radio y tiene la cara hacia -X: se escala y se gira para que la cara mire a Venom
 		model = glm::mat4(1.0);
@@ -4269,7 +4381,7 @@ int main()
 		giroCamara = glm::transpose(glm::mat4(glm::mat3(vista)));	// deshace el giro de la camara
 		brilloPlasmaTexture.UseTexture();
 		for (int i = 0; i < MAX_PLASMA_NAVE; i++) {
-			if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA || !plasmaNaveVerde[i]) continue;	// el Arwing no usa estas manchas: tiene su bola de plasma (abajo)
+			if (plasmaNaveEdad[i] >= PLASMA_NAVE_VIDA) continue;
 			vidaP = plasmaNaveEdad[i] / PLASMA_NAVE_VIDA;	// 0 nace, 1 muere
 			color = (plasmaNaveVerde[i] ? glm::vec3(0.35f, 1.0f, 0.45f) : glm::vec3(0.35f, 0.65f, 1.0f)) * (0.9f * (1.0f - vidaP) * (1.0f - vidaP));
 			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
@@ -4280,25 +4392,6 @@ int main()
 			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 			meshListModel[HUMO]->RenderMeshModel();
 		}
-		// bola de plasma del Arwing (como en Star Fox 64): un destello azul con estrella en cada tobera, siempre mirando a la camara y con un parpadeo rapido
-		brilloArwingTexture.UseTexture();
-		naveM = glm::translate(glm::mat4(1.0), posArwing);
-		naveM = glm::rotate(naveM, yawArwing, glm::vec3(0.0f, 1.0f, 0.0f));
-		naveM = glm::rotate(naveM, -pitchArwing, glm::vec3(1.0f, 0.0f, 0.0f));
-		naveM = glm::rotate(naveM, rollArwing, glm::vec3(0.0f, 0.0f, 1.0f));
-		for (int n = 0; n < 2; n++) {
-			pulsoBola = 1.0f + 0.12f * sinf(38.0f * now + 2.0f * n) + 0.05f * sinf(91.0f * now + n);
-			color = glm::vec3(0.95f, 0.97f, 1.0f) * (0.75f * pulsoBola);
-			glUniform3fv(uniformColorEfecto, 1, glm::value_ptr(color));
-			tamP = PLASMA_ARWING_BOLA * empujeArwing * pulsoBola;
-			model = glm::translate(glm::mat4(1.0), glm::vec3(naveM * glm::vec4(TOBERA_ARWING[n] * ARWING_ESCALA, 1.0f)));	// la tobera en el mundo
-			model = model * giroCamara;
-			model = glm::rotate(model, 0.3f * sinf(3.0f * now + n), glm::vec3(0.0f, 0.0f, 1.0f));	// la estrella se mece un poco
-			model = glm::scale(model, glm::vec3(tamP, tamP, tamP));
-			glUniformMatrix4fv(shaderList[2].GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
-			meshListModel[HUMO]->RenderMeshModel();
-		}
-
 		offsetEfecto = glm::vec2(0.0f, 0.0f);
 		glUniform2fv(uniformOffsetEfecto, 1, glm::value_ptr(offsetEfecto));
 		// ---- AC4 escudos de energia de Reach: pulsan cada 2 s ----

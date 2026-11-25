@@ -1,0 +1,75 @@
+newmtl Mat14
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6024340.png
+
+newmtl Mat1
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6021d10.png
+
+newmtl Mat13
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_601f400.png
+
+newmtl Mat12
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_601f200.png
+
+newmtl Mat11
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_601ea00.png
+
+newmtl Mat4
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6023b40.png
+
+newmtl Mat8
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_602db30.png
+
+newmtl Mat6
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_602df30.png
+
+newmtl Mat10
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_602d930.png
+
+newmtl Mat9
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_602dd30.png
+
+newmtl Mat7
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6025fa8.png
+
+newmtl Mat5
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6028988.png
+
+newmtl Mat3
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6023340.png
+
+newmtl Mat2
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6021f10.png
+
+newmtl Mat0
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd peppy_tex_6026d28.png
+

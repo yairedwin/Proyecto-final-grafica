@@ -1,0 +1,75 @@
+newmtl m_aTitleTeamShineTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamshinetex.rgba16.png
+
+newmtl m_aTitleSlippySkinTex2_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleslippyskintex2.rgba16.png
+
+newmtl m_aTitleTeamMouthTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteammouthtex.rgba16.png
+
+newmtl m_aTitleTeamSkinTex2_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamskintex2.rgba16.png
+
+newmtl m_aTitleTeamTex1_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamtex1.rgba16.png
+
+newmtl m_aTitleTeamEyeTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteameyetex.rgba16.png
+
+newmtl m_aTitleTeamSkinTex1_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamskintex1.rgba16.png
+
+newmtl m_aTitleFoxHandTex1_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitlefoxhandtex1.rgba16.png
+
+newmtl m_aTitleFoxHandTex2_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitlefoxhandtex2.rgba16.png
+
+newmtl m_aTitleFoxHandTex3_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitlefoxhandtex3.rgba16.png
+
+newmtl m_aTitleTeamClothingTex2_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamclothingtex2.rgba16.png
+
+newmtl m_aTitleTeamClothingTex1_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamclothingtex1.rgba16.png
+
+newmtl m_aTitleTeamScarfTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteamscarftex.rgba16.png
+
+newmtl m_aTitleFoxTShirtTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitlefoxtshirttex.rgba16.png
+
+newmtl m_aTitleTeamBeltTex_rgba16
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd fox_atitleteambelttex.rgba16.png
+

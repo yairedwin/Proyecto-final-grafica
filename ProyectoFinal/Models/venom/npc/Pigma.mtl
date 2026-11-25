@@ -1,0 +1,10 @@
+newmtl Tex_0039_0_png
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd pigma_pigma_main.png
+
+newmtl Tex_0045_0_png
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd pigma_peppy_main.png
+

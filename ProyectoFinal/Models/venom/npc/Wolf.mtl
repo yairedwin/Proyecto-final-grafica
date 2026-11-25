@@ -1,0 +1,75 @@
+newmtl Black
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_black.png
+
+newmtl Mouth
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_mouth.png
+
+newmtl SFMetal
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_sfmetal.png
+
+newmtl SFScarf
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_sfscarf.png
+
+newmtl SFbelt
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_sfbelt.png
+
+newmtl SFcloth
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_sfcloth.png
+
+newmtl White
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_eyeblank.png
+
+newmtl WolfClothes
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfclothes2.png
+
+newmtl WolfEyes
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_sweyered.png
+
+newmtl WolfHand1
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfhand1.png
+
+newmtl WolfHand2
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfhand2.png
+
+newmtl WolfHand3
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfhand3.png
+
+newmtl WolfShirt
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfshirt.png
+
+newmtl WolfSkin
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfskin.png
+
+newmtl WolfSkin2
+Kd 0.8 0.8 0.8
+illum 1
+map_Kd wolf_wolfskin2.png
+
