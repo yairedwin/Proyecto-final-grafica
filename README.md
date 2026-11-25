@@ -27,6 +27,7 @@ El programa principal es `proyecto_final.cpp`, dividido en secciones por integra
 | `v2` | Planetas de radio 80, cohete Saturn V con humo, llama y separación de etapas, y Reach integrado. |
 | `v3` | Versión final del laboratorio: avatar jerárquico con caminata, Venom completo (domo, Venomianos, Wolfen y Arwing), cohetes de los tres planetas por keyframes (Forja, Reach y Venom), Sabre en la pista, todas las teclas guardadas en `Window` y modelos centrados en el origen. |
 | `v4` | Versión de teoría (rama `version-4-teoria`): audio con miniaudio (soundtrack, ambientes por planeta y efectos con condición, incluidos los de Reach y el motor del Arwing), evolución de especies en 3 etapas con su nombre flotante (Protopets, Moa, Venomianos, ballenas espaciales y aves de fuego), keyframes nuevos (asteroide, estrella fugaz y satélite que sale de la estación), Mundo Forja repartido, plasma de las naves de Venom y texturas en todos los elementos. |
+| `v5` | **Versión final del proyecto** (rama `version-5-final`), la que se entrega en teoría: todo lo de la v4 más tres estrellas fugaces de colores por keyframes, en Venom los personajes de Star Fox que caminan (Fox, Peppy, Wolf y Pigma) y una zona de lava con dos luces que titilan, sonido de las naves de Venom con fundidos y paneo (motor de los Wolfen con audio CC0), modelos de los personajes centrados en el origen y cada luz puntual con su propia atenuación. |
 
 Cada integrante trabaja en su rama (`419049898`, `317136421`, `318337872`) y lo terminado se junta en `main`.
 
